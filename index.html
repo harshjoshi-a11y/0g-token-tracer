@@ -1519,7 +1519,7 @@ async function loadAndTrace() {
   try {
     const chain       = state.chain;
     const chainCfg    = CHAINS[chain] || CHAINS['0g'];
-    const apiBase     = document.getElementById('api-base').value.trim();
+    const apiBase = document.getElementById('api-base')?.value?.trim() || chainCfg.apiBase || '';
     const apiKey      = document.getElementById('api-key').value.trim();
     const tokenAddr   = document.getElementById('token-contract').value.trim();
     const minBalance  = parseFloat(document.getElementById('min-balance').value)  || 500000;
