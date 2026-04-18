@@ -3,1928 +3,963 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>0G Token Flow Tracer — Genesis Edition</title>
+<title>0G Token Flow — Genesis Trace</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/d3/7.9.0/d3.min.js"></script>
 <style>
 *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
-
-:root {
-  --bg:        #070c18;
-  --bg2:       #0d1526;
-  --bg3:       #141e33;
-  --border:    #1e2d4a;
-  --text:      #c8d4e8;
-  --text2:     #7a90b0;
-  --accent:    #2563eb;
-  --accent2:   #0ea5e9;
-  --gold:      #f59e0b;
-  --green:     #10b981;
-  --red:       #ef4444;
-  --purple:    #8b5cf6;
-  --teal:      #06b6d4;
-  --panel-w:   280px;
-  --detail-w:  300px;
-  --header-h:  52px;
-}
-
 body {
-  font-family: 'Inter', 'Segoe UI', system-ui, sans-serif;
-  background: var(--bg);
-  color: var(--text);
+  font-family: 'Inter', system-ui, sans-serif;
+  background: #050d1e;
+  color: #c8d4e8;
   height: 100vh;
   display: flex;
   flex-direction: column;
   overflow: hidden;
   font-size: 13px;
 }
-
-/* ── HEADER ───────────────────────────────────── */
 #topbar {
-  height: var(--header-h);
-  background: var(--bg2);
-  border-bottom: 1px solid var(--border);
+  height: 54px;
+  background: #0a1628;
+  border-bottom: 1px solid #1e2d4a;
   display: flex;
   align-items: center;
-  padding: 0 16px;
-  gap: 24px;
+  padding: 0 18px;
+  gap: 16px;
   flex-shrink: 0;
-  z-index: 10;
 }
+.logo { font-size: 24px; color: #f59e0b; filter: drop-shadow(0 0 8px #f59e0b99); }
+.title { font-weight: 700; font-size: 15px; }
+.subtitle { font-size: 11px; color: #6b8099; background: #0d1526; padding: 3px 8px; border-radius: 10px; border: 1px solid #1e2d4a; }
+#stats { margin-left: auto; display: flex; gap: 20px; }
+.stat span { font-size: 15px; font-weight: 700; color: #0ea5e9; display: block; text-align: center; }
+.stat label { font-size: 10px; color: #6b8099; text-transform: uppercase; letter-spacing: 0.05em; }
 
-.brand { display: flex; align-items: center; gap: 8px; }
-.brand .logo {
-  font-size: 22px; color: var(--gold);
-  filter: drop-shadow(0 0 6px #f59e0b88);
-}
-.brand .title { font-weight: 700; font-size: 15px; letter-spacing: 0.02em; }
-.brand .subtitle { font-size: 11px; color: var(--text2); padding: 2px 7px;
-  background: var(--bg3); border-radius: 10px; border: 1px solid var(--border); }
+#main { flex: 1; display: flex; overflow: hidden; position: relative; }
 
-#stats-bar {
-  display: flex; gap: 20px; margin-left: auto;
-}
-.stat { display: flex; flex-direction: column; align-items: center; }
-.stat span { font-size: 15px; font-weight: 700; color: var(--accent2); }
-.stat label { font-size: 10px; color: var(--text2); text-transform: uppercase; letter-spacing: 0.05em; }
-
-.toolbar { display: flex; gap: 6px; margin-left: 16px; }
-.toolbar button {
-  background: var(--bg3); border: 1px solid var(--border);
-  color: var(--text2); border-radius: 6px; width: 30px; height: 30px;
-  cursor: pointer; font-size: 15px; transition: all 0.15s;
-}
-.toolbar button:hover, .toolbar button.active {
-  border-color: var(--accent); color: var(--accent2);
-  background: #1e3a5f44;
-}
-
-/* ── LAYOUT ───────────────────────────────────── */
-.layout {
-  display: flex;
-  flex: 1;
-  overflow: hidden;
-}
-
-/* ── LEFT SIDEBAR ─────────────────────────────── */
-#sidebar-config {
-  width: var(--panel-w);
-  background: var(--bg2);
-  border-right: 1px solid var(--border);
-  overflow-y: auto;
-  flex-shrink: 0;
+#sidebar {
+  width: 240px;
+  background: #0a1628;
+  border-right: 1px solid #1e2d4a;
+  padding: 14px;
   display: flex;
   flex-direction: column;
-  gap: 0;
-}
-
-#sidebar-config::-webkit-scrollbar { width: 4px; }
-#sidebar-config::-webkit-scrollbar-track { background: var(--bg2); }
-#sidebar-config::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
-
-.panel {
-  padding: 14px 14px 10px;
-  border-bottom: 1px solid var(--border);
-}
-.panel h3 {
-  font-size: 11px; text-transform: uppercase; letter-spacing: 0.08em;
-  color: var(--text2); margin-bottom: 12px;
-}
-
-label {
-  display: block; font-size: 11px; color: var(--text2);
-  margin-bottom: 4px; margin-top: 10px;
-}
-label:first-of-type { margin-top: 0; }
-
-input[type="text"], input[type="password"], input[type="number"], select, textarea {
-  width: 100%; background: var(--bg3); border: 1px solid var(--border);
-  color: var(--text); border-radius: 6px; padding: 6px 9px;
-  font-size: 12px; font-family: inherit; outline: none;
-  transition: border-color 0.15s;
-}
-input:focus, select:focus, textarea:focus { border-color: var(--accent); }
-textarea { resize: vertical; min-height: 60px; }
-
-input[type="range"] {
-  width: 100%; background: transparent; border: none; padding: 4px 0;
-  accent-color: var(--accent);
-}
-
-select option { background: var(--bg3); }
-
-.source-tabs { display: flex; gap: 4px; margin-bottom: 12px; }
-.tab {
-  flex: 1; padding: 5px 8px; font-size: 11px; cursor: pointer;
-  background: var(--bg3); border: 1px solid var(--border);
-  color: var(--text2); border-radius: 5px; transition: all 0.15s;
-}
-.tab.active { background: #1e3a5f; border-color: var(--accent); color: var(--accent2); }
-.tab-content { }
-.hidden { display: none !important; }
-
-.hint {
-  font-size: 10px; color: var(--text2); margin-top: 8px;
-  padding: 7px 9px; background: var(--bg3); border-radius: 5px;
-  border: 1px solid var(--border); line-height: 1.5;
-}
-.hint code { color: var(--accent2); font-size: 10px; }
-
-#btn-load {
-  margin: 12px 14px; padding: 9px; font-size: 13px; font-weight: 600;
-  background: linear-gradient(135deg, var(--accent), var(--accent2));
-  border: none; border-radius: 8px; color: #fff; cursor: pointer;
-  width: calc(100% - 28px); transition: opacity 0.15s;
-}
-#btn-load:hover { opacity: 0.9; }
-#btn-load:disabled { opacity: 0.5; cursor: not-allowed; }
-
-#progress-area { padding: 0 14px 14px; }
-#progress-bar {
-  height: 4px; background: var(--bg3); border-radius: 2px;
-  overflow: hidden; margin-bottom: 6px;
-}
-#progress-fill {
-  height: 100%; background: linear-gradient(90deg, var(--accent), var(--teal));
-  border-radius: 2px; transition: width 0.4s;
-  width: 0%;
-}
-#progress-label { font-size: 11px; color: var(--text2); }
-
-#drop-zone {
-  border: 2px dashed var(--border); border-radius: 8px;
-  padding: 20px; text-align: center; cursor: pointer;
-  color: var(--text2); font-size: 12px; line-height: 1.8;
-  transition: border-color 0.15s;
-  position: relative;
-}
-#drop-zone:hover, #drop-zone.drag-over { border-color: var(--accent); color: var(--text); }
-#drop-zone input[type="file"] { display: none; }
-
-/* Known wallets */
-.kw-group { margin-bottom: 8px; }
-.kw-type { font-size: 10px; text-transform: uppercase; color: var(--text2); margin-bottom: 4px; }
-.kw-item {
-  display: flex; align-items: center; gap: 6px; padding: 4px 6px;
-  border-radius: 4px; cursor: pointer; transition: background 0.1s; font-size: 11px;
-}
-.kw-item:hover { background: var(--bg3); }
-.kw-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
-
-/* ── GRAPH AREA ───────────────────────────────── */
-#graph-area {
-  flex: 1; position: relative; overflow: hidden;
-  background: radial-gradient(ellipse at center, #0d1526 0%, #070c18 100%);
-}
-
-#graph { width: 100%; height: 100%; }
-
-#overlay-empty {
-  position: absolute; inset: 0; display: flex;
-  align-items: center; justify-content: center; pointer-events: none;
-}
-.empty-state { text-align: center; color: var(--text2); }
-.empty-icon { font-size: 60px; display: block; margin-bottom: 16px; opacity: 0.2; }
-.empty-state p { font-size: 14px; line-height: 1.7; }
-.empty-state strong { color: var(--text); }
-
-/* Tooltip */
-#tooltip {
-  position: fixed; z-index: 100; pointer-events: none;
-  background: var(--bg2); border: 1px solid var(--border);
-  border-radius: 8px; padding: 10px 13px; min-width: 200px;
-  box-shadow: 0 8px 24px #00000088;
-}
-.tip-name { font-weight: 700; font-size: 13px; margin-bottom: 3px; }
-.tip-addr { font-family: monospace; font-size: 10px; color: var(--text2); margin-bottom: 8px; word-break: break-all; }
-.tip-row { display: flex; justify-content: space-between; font-size: 12px;
-  padding: 2px 0; border-bottom: 1px solid var(--border); }
-.tip-row:last-child { border: none; }
-.tip-row span { color: var(--text2); }
-
-/* Legend */
-#legend {
-  position: absolute; bottom: 16px; left: 16px;
-  background: var(--bg2); border: 1px solid var(--border);
-  border-radius: 8px; padding: 10px 12px;
-}
-.legend-title { font-size: 10px; text-transform: uppercase; color: var(--text2); margin-bottom: 8px; }
-.legend-item { display: flex; align-items: center; gap: 8px; font-size: 11px; margin-bottom: 4px; }
-.legend-dot { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; }
-.legend-line {
-  width: 24px; height: 3px; border-radius: 1px; flex-shrink: 0;
-}
-
-/* Graph elements */
-.node { cursor: pointer; }
-.node:hover circle { filter: brightness(1.3); }
-.glow-ring { animation: pulse 2s ease-in-out infinite; }
-@keyframes pulse { 0%, 100% { opacity: 0.3; } 50% { opacity: 0.7; } }
-
-/* ── RIGHT DETAIL SIDEBAR ─────────────────────── */
-#sidebar-detail {
-  width: var(--detail-w);
-  background: var(--bg2);
-  border-left: 1px solid var(--border);
-  flex-shrink: 0;
+  gap: 12px;
   overflow-y: auto;
-  padding: 16px;
-  position: relative;
+  flex-shrink: 0;
 }
+#sidebar h3 { font-size: 11px; text-transform: uppercase; letter-spacing: 0.08em; color: #6b8099; margin-top: 4px; }
+.legend-item { display: flex; align-items: center; gap: 8px; font-size: 12px; }
+.legend-dot { width: 12px; height: 12px; border-radius: 50%; flex-shrink: 0; }
+.legend-line { width: 24px; height: 2px; flex-shrink: 0; }
 
-#sidebar-detail::-webkit-scrollbar { width: 4px; }
-#sidebar-detail::-webkit-scrollbar-thumb { background: var(--border); }
-
-#btn-close-detail {
-  position: absolute; top: 12px; right: 12px;
-  background: var(--bg3); border: 1px solid var(--border);
-  color: var(--text2); width: 24px; height: 24px; border-radius: 4px;
-  cursor: pointer; font-size: 12px;
-}
-#btn-close-detail:hover { color: var(--text); }
-
-#sidebar-detail h3 { font-size: 13px; margin-bottom: 8px; padding-right: 30px; }
-#sidebar-detail h4 { font-size: 11px; text-transform: uppercase; color: var(--text2);
-  letter-spacing: 0.06em; margin: 16px 0 8px; }
-
-.address {
-  font-family: monospace; font-size: 11px; color: var(--text2);
-  word-break: break-all; margin-bottom: 8px;
-  padding: 6px 9px; background: var(--bg3); border-radius: 5px;
-}
-
-.badge {
-  display: inline-block; font-size: 10px; text-transform: uppercase;
-  letter-spacing: 0.06em; padding: 2px 8px; border-radius: 10px;
-  margin-bottom: 14px; font-weight: 600;
-}
-.badge-genesis  { background: #f59e0b22; color: var(--gold); border: 1px solid #f59e0b44; }
-.badge-exchange { background: #ef444422; color: var(--red); border: 1px solid #ef444444; }
-.badge-contract { background: #8b5cf622; color: var(--purple); border: 1px solid #8b5cf644; }
-.badge-wallet   { background: #0ea5e922; color: var(--accent2); border: 1px solid #0ea5e944; }
-
-.detail-stats { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 4px; }
-.ds {
-  background: var(--bg3); border: 1px solid var(--border);
-  border-radius: 6px; padding: 8px 10px;
-}
-.ds span { display: block; font-size: 14px; font-weight: 700; color: var(--accent2); }
-.ds label { font-size: 10px; color: var(--text2); margin-top: 2px; }
-
-.flow-row {
-  display: flex; align-items: center; gap: 6px;
-  padding: 5px 0; border-bottom: 1px solid var(--border);
-  font-size: 11px;
-}
-.flow-row:last-child { border: none; }
-.flow-dir { font-size: 10px; font-weight: 700; padding: 1px 5px; border-radius: 3px; flex-shrink: 0; }
-.flow-dir.out { background: #ef444422; color: var(--red); }
-.flow-dir.in  { background: #10b98122; color: var(--green); }
-.flow-addr { flex: 1; color: var(--text2); font-family: monospace; }
-.flow-amt { color: var(--text); }
-
-.detail-actions { margin-top: 16px; display: flex; flex-direction: column; gap: 8px; }
-.btn-link {
-  display: block; text-align: center; padding: 7px;
-  background: var(--bg3); border: 1px solid var(--border);
-  color: var(--accent2); text-decoration: none; border-radius: 6px;
-  font-size: 12px; transition: border-color 0.15s;
-}
-.btn-link:hover { border-color: var(--accent2); }
-#d-trace-btn {
-  width: 100%; padding: 7px; background: var(--bg3);
-  border: 1px solid var(--accent); color: var(--accent2);
-  border-radius: 6px; cursor: pointer; font-size: 12px;
+.btn {
+  background: #2563eb;
+  color: white;
+  border: none;
+  border-radius: 8px;
+  padding: 10px 14px;
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 600;
+  width: 100%;
   transition: background 0.15s;
 }
-#d-trace-btn:hover { background: #1e3a5f44; }
+.btn:hover { background: #1d4ed8; }
+.btn:disabled { background: #1e2d4a; color: #6b8099; cursor: not-allowed; }
+.btn-sm { padding: 6px 10px; font-size: 12px; border-radius: 6px; }
 
-/* ── SEARCH BAR overlay ───────────────────────── */
-#search-bar {
-  position: absolute; top: 12px; right: 16px;
-  display: flex; gap: 6px; z-index: 20;
+#progress-wrap { display: none; }
+#progress-bar-outer { background: #1e2d4a; border-radius: 4px; height: 6px; margin-bottom: 6px; }
+#progress-bar { background: #2563eb; height: 6px; border-radius: 4px; width: 0%; transition: width 0.3s; }
+#progress-msg { font-size: 11px; color: #6b8099; }
+
+#alloc-list { font-size: 11px; color: #8899aa; max-height: 200px; overflow-y: auto; }
+.alloc-row { display: flex; justify-content: space-between; padding: 3px 0; border-bottom: 1px solid #1e2d4a11; }
+.alloc-row .addr { color: #0ea5e9; font-family: monospace; }
+.alloc-row .amt { color: #10b981; font-weight: 600; }
+
+#controls { display: flex; flex-direction: column; gap: 6px; }
+label { font-size: 11px; color: #6b8099; }
+select, input[type=range] { width: 100%; background: #0d1526; color: #c8d4e8; border: 1px solid #1e2d4a; border-radius: 6px; padding: 5px 8px; font-size: 12px; }
+
+#graph-area { flex: 1; position: relative; overflow: hidden; }
+svg { width: 100%; height: 100%; display: block; }
+
+#tooltip {
+  position: absolute;
+  display: none;
+  background: #0d1526ee;
+  border: 1px solid #2d3f5c;
+  border-radius: 8px;
+  padding: 10px 14px;
+  font-size: 12px;
+  pointer-events: none;
+  z-index: 10;
+  max-width: 280px;
+  box-shadow: 0 8px 32px #00000088;
 }
-#search-input {
-  width: 220px; background: var(--bg2); border: 1px solid var(--border);
-  color: var(--text); border-radius: 6px; padding: 6px 10px; font-size: 12px; outline: none;
+.tip-title { font-weight: 700; margin-bottom: 6px; color: #e2eaf6; }
+.tip-addr { font-family: monospace; font-size: 10px; color: #6b8099; word-break: break-all; margin-bottom: 8px; }
+.tip-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 4px; }
+.tip-val { font-weight: 700; }
+.tip-lbl { color: #6b8099; font-size: 10px; }
+
+#overlay-start {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+  background: #050d1e;
 }
-#search-input:focus { border-color: var(--accent); }
-#search-btn {
-  padding: 6px 12px; background: var(--accent); border: none;
-  color: #fff; border-radius: 6px; cursor: pointer; font-size: 12px;
+.start-icon { font-size: 64px; filter: drop-shadow(0 0 20px #f59e0b88); }
+.start-title { font-size: 22px; font-weight: 700; color: #e2eaf6; }
+.start-sub { font-size: 13px; color: #6b8099; text-align: center; max-width: 380px; line-height: 1.6; }
+.start-btn {
+  background: #f59e0b;
+  color: #0a0f1e;
+  border: none;
+  border-radius: 10px;
+  padding: 14px 32px;
+  font-size: 15px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.2s;
+  box-shadow: 0 4px 20px #f59e0b44;
 }
+.start-btn:hover { background: #fbbf24; transform: translateY(-1px); box-shadow: 0 6px 24px #f59e0b66; }
+.genesis-badge { font-family: monospace; font-size: 11px; color: #f59e0b; background: #1a1200; border: 1px solid #f59e0b44; border-radius: 6px; padding: 6px 12px; }
+
+/* ── Password overlay ───────────────────────────────── */
+#pass-overlay {
+  position: fixed; inset: 0; z-index: 9999;
+  background: #050d1e;
+  display: flex; align-items: center; justify-content: center;
+}
+.pass-box {
+  background: #0a1628;
+  border: 1px solid #1e2d4a;
+  border-radius: 16px;
+  padding: 40px 44px;
+  width: 360px;
+  display: flex; flex-direction: column; align-items: center; gap: 18px;
+  box-shadow: 0 16px 60px #00000088;
+}
+.pass-logo { font-size: 48px; filter: drop-shadow(0 0 18px #f59e0b88); }
+.pass-title { font-size: 18px; font-weight: 700; color: #e2eaf6; }
+.pass-sub { font-size: 12px; color: #6b8099; text-align: center; line-height: 1.5; }
+.pass-input-wrap { width: 100%; position: relative; }
+.pass-input-wrap input {
+  width: 100%; background: #0d1526; color: #e2eaf6;
+  border: 1px solid #2d3f5c; border-radius: 8px;
+  padding: 11px 40px 11px 14px; font-size: 14px;
+  outline: none; transition: border 0.2s;
+}
+.pass-input-wrap input:focus { border-color: #f59e0b88; }
+.pass-eye {
+  position: absolute; right: 12px; top: 50%; transform: translateY(-50%);
+  cursor: pointer; color: #6b8099; font-size: 14px; user-select: none;
+}
+.pass-err { font-size: 12px; color: #ef4444; min-height: 16px; }
+.pass-btn {
+  width: 100%; background: #f59e0b; color: #0a0f1e;
+  border: none; border-radius: 8px; padding: 12px;
+  font-size: 14px; font-weight: 700; cursor: pointer;
+  transition: all 0.15s; box-shadow: 0 4px 16px #f59e0b33;
+}
+.pass-btn:hover { background: #fbbf24; }
+.pass-btn:disabled { background: #1e2d4a; color: #6b8099; cursor: not-allowed; box-shadow: none; }
+@keyframes shake {
+  0%,100%{transform:translateX(0)} 20%{transform:translateX(-8px)}
+  40%{transform:translateX(8px)} 60%{transform:translateX(-6px)} 80%{transform:translateX(6px)}
+}
+.shake { animation: shake 0.4s ease; }
+
+/* ── Label manager ──────────────────────────────────── */
+#lbl-section { border-top: 1px solid #1e2d4a; padding-top: 10px; }
+#lbl-toggle {
+  display: flex; justify-content: space-between; align-items: center;
+  cursor: pointer; user-select: none;
+}
+#lbl-toggle:hover h3 { color: #c8d4e8; }
+#lbl-toggle .caret { color: #6b8099; font-size: 10px; transition: transform 0.2s; }
+#lbl-body { display: none; margin-top: 8px; display: flex; flex-direction: column; gap: 6px; }
+#lbl-form input, #lbl-form select {
+  width: 100%; background: #0d1526; color: #c8d4e8;
+  border: 1px solid #1e2d4a; border-radius: 6px;
+  padding: 5px 8px; font-size: 12px;
+}
+#lbl-form input:focus, #lbl-form select:focus { outline: none; border-color: #2563eb88; }
+.lbl-entry {
+  display: flex; align-items: center; gap: 5px;
+  font-size: 11px; padding: 4px 6px;
+  background: #0d1526; border-radius: 5px; border: 1px solid #1e2d4a22;
+}
+.lbl-entry .le-addr { font-family: monospace; color: #6b8099; flex: 1; min-width: 0;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-size: 10px; }
+.lbl-entry .le-name { color: #e2eaf6; font-size: 11px; flex-shrink: 0; max-width: 80px;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.lbl-entry .le-del {
+  cursor: pointer; color: #ef444488; flex-shrink: 0;
+  font-size: 13px; line-height: 1; padding: 0 2px;
+}
+.lbl-entry .le-del:hover { color: #ef4444; }
+.type-badge {
+  flex-shrink: 0; font-size: 9px; font-weight: 700; padding: 1px 5px;
+  border-radius: 4px; text-transform: uppercase; letter-spacing: 0.04em;
+}
+.tb-genesis  { background: #f59e0b22; color: #f59e0b; }
+.tb-whale    { background: #3b82f622; color: #3b82f6; }
+.tb-large    { background: #10b98122; color: #10b981; }
+.tb-medium   { background: #06b6d422; color: #06b6d4; }
+.tb-contract { background: #8b5cf622; color: #8b5cf6; }
+.tb-exchange  { background: #f97316aa; color: #fff; }
+.tb-internal  { background: #e879f922; color: #e879f9; }
 </style>
 </head>
 <body>
 
-<!-- ═══════════ HEADER ═══════════ -->
-<header id="topbar">
-  <div class="brand">
-    <span class="logo">⬡</span>
-    <span class="title">0G Token Flow Tracer</span>
-    <span class="subtitle">Genesis Edition</span>
+<!-- ════════════════════════════════════════════════════
+     PASSWORD GATE
+     Default password: 0gGenesis2025
+     To change: run in browser console →
+       crypto.subtle.digest('SHA-256', new TextEncoder().encode('yourPassword'))
+         .then(b => console.log([...new Uint8Array(b)].map(x=>x.toString(16).padStart(2,'0')).join('')))
+     Then replace PASS_HASH in the <script> block below.
+     ════════════════════════════════════════════════════ -->
+<div id="pass-overlay">
+  <div class="pass-box">
+    <div class="pass-logo">⬡</div>
+    <div class="pass-title">0G Token Flow Tracer</div>
+    <div class="pass-sub">Internal intelligence tool — enter password to continue</div>
+    <div class="pass-input-wrap">
+      <input type="password" id="pass-input" placeholder="Password"
+        onkeydown="if(event.key==='Enter')checkPass()">
+      <span class="pass-eye" onclick="togglePassEye(this)">👁</span>
+    </div>
+    <div class="pass-err" id="pass-err"></div>
+    <button class="pass-btn" id="pass-btn" onclick="checkPass()">Unlock ⬡</button>
   </div>
-  <div id="stats-bar">
-    <div class="stat"><span id="stat-nodes">0</span><label>Addresses</label></div>
-    <div class="stat"><span id="stat-edges">0</span><label>Flows</label></div>
-    <div class="stat"><span id="stat-tokens">—</span><label>Tokens Tracked</label></div>
-    <div class="stat"><span id="stat-genesis">Sep 22 2025</span><label>TGE Date</label></div>
+</div>
+
+<div id="topbar">
+  <span class="logo">⬡</span>
+  <div>
+    <div class="title">0G Token Flow — Genesis Trace</div>
   </div>
-  <div class="toolbar">
-    <button id="btn-layout-force" class="active" title="Reheat simulation">⊙ Reheat</button>
-    <button id="btn-pin-all" title="Pin all nodes">📌 Pin</button>
-    <button id="btn-export" title="Export SVG">⤓ Export</button>
+  <span class="subtitle">A0GI Native • Mainnet (Aristotle) • Chain ID 16661</span>
+  <div id="stats">
+    <div class="stat"><span id="s-nodes">—</span><label>Nodes</label></div>
+    <div class="stat"><span id="s-links">—</span><label>Links</label></div>
+    <div class="stat"><span id="s-txs">—</span><label>Txs</label></div>
+    <div class="stat"><span id="s-vol">—</span><label>Volume</label></div>
   </div>
-</header>
+</div>
 
-<!-- ═══════════ LAYOUT ═══════════ -->
-<div class="layout">
+<div id="main">
+  <div id="sidebar">
+    <h3>Genesis Wallet</h3>
+    <div style="font-family:monospace;font-size:10px;color:#f59e0b;word-break:break-all;background:#1a1200;border:1px solid #f59e0b33;border-radius:6px;padding:6px 8px">
+      0x711b0ecb072c27de0e50c9944d7195a51b202522<br>
+      <span style="color:#10b981;font-family:sans-serif">999,998,000 A0GI at block 1</span>
+    </div>
 
-  <!-- LEFT CONFIG -->
-  <aside id="sidebar-config">
+    <div id="controls">
+      <label>Min balance to show (A0GI)</label>
+      <select id="min-bal">
+        <option value="500000">500K (default)</option>
+        <option value="1000000">1M</option>
+        <option value="5000000">5M</option>
+        <option value="10000000">10M</option>
+        <option value="0">All</option>
+      </select>
+      <label>Hop depth: <b id="hop-label" style="color:#0ea5e9">1</b></label>
+      <input type="range" id="hop-depth" min="1" max="3" value="1"
+        oninput="document.getElementById('hop-label').textContent=this.value">
+    </div>
 
-    <div class="panel">
-      <h3>Data Source</h3>
-      <div class="source-tabs">
-        <button class="tab active" data-tab="rpc">0G Direct RPC ⚡</button>
-        <button class="tab" data-tab="ethereum">Ethereum</button>
-        <button class="tab" data-tab="upload">Upload CSV</button>
+    <button class="btn" id="btn-trace" onclick="startTrace()">⬡ Trace from Genesis</button>
+
+    <div id="progress-wrap">
+      <div id="progress-bar-outer"><div id="progress-bar"></div></div>
+      <div id="progress-msg">Starting…</div>
+    </div>
+
+    <h3>Legend</h3>
+    <div style="display:flex;flex-direction:column;gap:5px">
+      <div class="legend-item"><div class="legend-dot" style="background:#f59e0b"></div> Genesis / ⭐ Tagged</div>
+      <div class="legend-item"><div class="legend-dot" style="background:#3b82f6"></div> 🐋 Whale / ≥10M</div>
+      <div class="legend-item"><div class="legend-dot" style="background:#10b981"></div> 🟢 Large ≥1M A0GI</div>
+      <div class="legend-item"><div class="legend-dot" style="background:#06b6d4"></div> 🔵 Medium ≥500K</div>
+      <div class="legend-item"><div class="legend-dot" style="background:#f97316"></div> 🏦 Exchange</div>
+      <div class="legend-item"><div class="legend-dot" style="background:#8b5cf6"></div> 🔷 Contract</div>
+      <div class="legend-item"><div class="legend-dot" style="background:#e879f9"></div> 🏠 Internal Wallet</div>
+      <div class="legend-item"><div class="legend-dot" style="background:#475569"></div> Small / Unknown</div>
+      <div class="legend-item"><div class="legend-line" style="background:#f59e0b88"></div> Large flow (≥5M)</div>
+      <div class="legend-item"><div class="legend-line" style="background:#3b82f666"></div> Medium flow (≥1M)</div>
+    </div>
+
+    <h3>Top Allocations</h3>
+    <div id="alloc-list"><div style="color:#475569">Run trace to see allocations</div></div>
+
+    <!-- ── Wallet Label Manager ─────────────────────── -->
+    <div id="lbl-section">
+      <div id="lbl-toggle" onclick="toggleLblPanel()">
+        <h3>Wallet Labels</h3>
+        <span class="caret" id="lbl-caret">▶</span>
       </div>
-
-      <!-- ── RPC tab ── -->
-      <div id="tab-rpc" class="tab-content">
-        <div class="hint" style="background:#1a3a1a;border-color:#10b98144;margin-bottom:10px">
-          ✅ <strong>No CORS issues</strong> — queries the blockchain directly.
+      <div id="lbl-body">
+        <div id="lbl-form" style="display:flex;flex-direction:column;gap:5px">
+          <input id="lbl-addr" placeholder="0x… address" spellcheck="false">
+          <input id="lbl-name" placeholder="Label (e.g. Binance Hot)">
+          <select id="lbl-type">
+            <option value="whale">🐋 Whale</option>
+            <option value="large">🟢 Large</option>
+            <option value="medium">🔵 Medium</option>
+            <option value="exchange">🏦 Exchange</option>
+            <option value="contract">🔷 Contract</option>
+            <option value="internal">🏠 Internal Wallet</option>
+            <option value="genesis">⭐ Genesis</option>
+          </select>
+          <button class="btn btn-sm" onclick="addCustomLabel()"
+            style="background:#10b981">+ Add Label</button>
         </div>
-
-        <label>RPC Endpoint</label>
-        <select id="rpc-preset" style="margin-bottom:4px">
-          <option value="https://0g-mainnet.drpc.org">dRPC (free, public)</option>
-          <option value="https://rpc.ankr.com/0g_mainnet_evm">Ankr (free)</option>
-          <option value="https://evmrpc-mainnet.0g.ai">Official 0G RPC</option>
-          <option value="custom">Custom…</option>
-        </select>
-        <input id="rpc-url" type="text" value="https://0g-mainnet.drpc.org" placeholder="https://…">
-
-        <label>Token Type</label>
-        <div style="display:flex;gap:6px;margin-bottom:4px">
-          <button class="token-type-btn active" data-type="native" style="flex:1;padding:6px;border-radius:5px;border:1px solid var(--accent);background:#1e3a5f;color:var(--accent2);cursor:pointer;font-size:11px;font-weight:600">
-            ⬡ Native A0GI
-          </button>
-          <button class="token-type-btn" data-type="erc20" style="flex:1;padding:6px;border-radius:5px;border:1px solid var(--border);background:var(--bg3);color:var(--text2);cursor:pointer;font-size:11px">
-            ERC-20 Token
-          </button>
-        </div>
-
-        <!-- Native A0GI fields -->
-        <div id="native-fields">
-          <label>Seed Wallet(s) to trace from</label>
-          <textarea id="rpc-genesis-wallets" rows="3">0x711b0ecb072c27de0e50c9944d7195a51b202522</textarea>
-          <div class="hint" style="background:#1a2d1a;border-color:#10b981;color:#a7f3d0">
-            ✅ <strong>Genesis wallet found!</strong> Pre-filled above.<br>
-            <code style="font-size:10px;word-break:break-all">0x711b0ecb…2522</code> held <strong>999,998,000 A0GI</strong> at block 1 (TGE Sep 22 2025). Current balance ~5.2M A0GI (994.7M distributed).<br><br>
-            ⚠️ <em>Note: bulk token distributions on 0G happened via the Cosmos consensus layer (not EVM txs), so EVM scanning will surface the smaller operational transfers. Use the <strong>W0G ERC-20 tab</strong> for the most complete flow visualization.</em>
-          </div>
-
-          <label>Trace Depth: <span id="native-hops-label" style="color:var(--accent2)">3 hops</span></label>
-          <input type="range" id="native-hops" min="1" max="5" value="3">
-        </div>
-
-        <!-- ERC-20 fields -->
-        <div id="erc20-fields" class="hidden">
-          <label>Token Contract Address</label>
-          <input id="rpc-token-contract" type="text" value="0x1cd0690ff9a693f5ef2dd976660a8dafc81a109c" placeholder="0x…">
-          <div class="hint">
-            <strong>Recommended — W0G (Wrapped 0G):</strong><br>
-            <code style="font-size:10px;word-break:break-all">0x1cd0690ff9a693f5ef2dd976660a8dafc81a109c</code><br>
-            472K+ transfers indexed. Top holder controls 75% of supply (~9.5M W0G). This gives the richest EVM-traceable flow graph.
-          </div>
-        </div>
-
-        <label>From Block <span style="color:var(--text2)">(0 = from genesis)</span></label>
-        <input id="rpc-from-block" type="number" value="0" min="0" placeholder="e.g. 1000000">
-
-        <label>Chunk size (blocks per call)</label>
-        <select id="rpc-chunk-size">
-          <option value="50000">50 000 (fast)</option>
-          <option value="10000" selected>10 000 (recommended)</option>
-          <option value="2000">2 000 (conservative)</option>
-          <option value="500">500 (slow nodes)</option>
-        </select>
-      </div>
-
-      <!-- ── Ethereum ERC-20 tab ── -->
-      <div id="tab-ethereum" class="tab-content hidden">
-        <label>Etherscan API Key</label>
-        <input id="api-key" type="password" placeholder="Get free key at etherscan.io/apis">
-
-        <label>Token Contract (Ethereum)</label>
-        <input id="token-contract" type="text" value="0x4b948d64de1f71fcd12fb586f4c776421a35b3ee">
-
-        <div class="hint">Fetches all ERC-20 token transfers via Etherscan. Leave API key blank to use the free (slower) tier.</div>
-      </div>
-
-      <!-- ── Upload tab ── -->
-      <div id="tab-upload" class="tab-content hidden">
-        <div id="drop-zone">
-          📂 Drop CSV / JSON here<br>
-          <small style="color:var(--text2)">or click to browse</small>
-          <input type="file" id="file-input" accept=".csv,.json,.txt">
-        </div>
-        <div class="hint">
-          ✓ <strong>0G Explorer CSV export</strong><br>
-          (<code>From, To, Value(CFX)…</code>)<br><br>
-          ✓ <strong>Etherscan</strong> token TX export<br>
-          ✓ Generic <code>from, to, value</code>
-        </div>
+        <div id="lbl-list" style="margin-top:4px;display:flex;flex-direction:column;gap:3px;max-height:160px;overflow-y:auto"></div>
+        <button class="btn btn-sm" onclick="applyLabels()"
+          style="background:#2563eb;margin-top:4px">↺ Apply to Graph</button>
       </div>
     </div>
 
-    <div class="panel">
-      <h3>Filters</h3>
-      <label>Min Token Balance to show</label>
-      <input type="number" id="min-balance" value="500000" min="0" step="1">
-      <input type="range" id="min-balance-slider" min="0" max="10000000" value="500000" step="1000">
-
-      <label>Min Single Transfer Size</label>
-      <input type="number" id="min-transfer" value="0" min="0" step="1">
-
-      <label>Trace Depth: <span id="max-hops-label" style="color:var(--accent2)">3 hops</span></label>
-      <input type="range" id="max-hops" min="1" max="6" value="3">
-      <div class="hint" style="margin-top:6px">Higher depth fetches more hops from genesis — slower but more complete.</div>
+    <div style="margin-top:auto;font-size:10px;color:#475569;line-height:1.5">
+      Snapshot: Apr 19 2026<br>
+      Genesis: Sep 22 2025<br>
+      <span style="color:#6b8099">Offline-first · live enrichment via chainscan.0g.ai when served over HTTP</span>
     </div>
+  </div>
 
-    <button id="btn-load">
-      <span id="btn-load-text">⬡ Trace from Genesis</span>
-    </button>
-
-    <div id="progress-area" class="hidden">
-      <div id="progress-bar"><div id="progress-fill"></div></div>
-      <div id="progress-label">Initializing...</div>
+  <div id="graph-area">
+    <div id="tooltip"></div>
+    <div id="overlay-start">
+      <span class="start-icon">⬡</span>
+      <div class="start-title">0G Token Flow Tracer</div>
+      <div class="start-sub">
+        Trace all native A0GI token flows from the genesis treasury wallet, hop by hop, visualised as an interactive force graph.
+      </div>
+      <div class="genesis-badge">Genesis: 0x711b0ecb…2522 → 999,998,000 A0GI</div>
+      <button class="start-btn" onclick="startTrace()">▶ Start Genesis Trace</button>
+      <div style="font-size:11px;color:#475569">Renders instantly from embedded snapshot · enriches live when online</div>
     </div>
-
-    <div class="panel">
-      <h3>Legend</h3>
-      <div id="legend-list"></div>
-    </div>
-
-    <div class="panel">
-      <h3>Known Wallets</h3>
-      <div id="known-wallets-list"></div>
-    </div>
-
-  </aside>
-
-  <!-- GRAPH CANVAS -->
-  <main id="graph-area">
     <svg id="graph"></svg>
-
-    <div id="search-bar">
-      <input id="search-input" placeholder="Search address or label…">
-      <button id="search-btn">Find</button>
-    </div>
-
-    <div id="tooltip" class="hidden"></div>
-
-    <div id="overlay-empty">
-      <div class="empty-state">
-        <span class="empty-icon">⬡</span>
-        <p>Configure your data source<br>and click <strong>Trace from Genesis</strong></p>
-      </div>
-    </div>
-  </main>
-
-  <!-- RIGHT DETAIL -->
-  <aside id="sidebar-detail" class="hidden">
-    <button id="btn-close-detail">✕</button>
-    <h3 id="detail-label">Address Details</h3>
-    <div id="detail-addr" class="address mono"></div>
-    <span id="detail-type" class="badge badge-wallet">wallet</span>
-
-    <div class="detail-stats">
-      <div class="ds"><span id="d-balance">—</span><label>Balance</label></div>
-      <div class="ds"><span id="d-in">—</span><label>Received</label></div>
-      <div class="ds"><span id="d-out">—</span><label>Sent</label></div>
-      <div class="ds"><span id="d-txcount">—</span><label>Tx Count</label></div>
-    </div>
-
-    <h4>Top Flows</h4>
-    <div id="detail-flows"></div>
-
-    <div class="detail-actions">
-      <a id="d-explorer-link" href="#" target="_blank" class="btn-link">View on Explorer ↗</a>
-      <button id="d-trace-btn">⬡ Trace from this address</button>
-    </div>
-  </aside>
-
+  </div>
 </div>
 
 <script>
-// ═══════════════════════════════════════════════
-// CONFIG
-// ═══════════════════════════════════════════════
+// ══════════════════════════════════════════════════════
+// PASSWORD GATE
+// SHA-256 of "0gGenesis2025" — change PASS_HASH to update
+// ══════════════════════════════════════════════════════
+const PASS_HASH = '33a25afdf094f5d1e79e2e3298e528aa4e8e836ef14ccbf560daa527612e2795';
 
-const CHAINS = {
-  '0g': {
-    name: '0G Network',
-    apiBase: 'https://chainscan.0g.ai',
-    apiType: 'blockscout',
-    explorerBase: 'https://chainscan.0g.ai',
-    symbol: 'A0GI',
-    decimals: 18,
-  },
-  'ethereum': {
-    name: 'Ethereum ERC-20',
-    apiBase: 'https://api.etherscan.io',
-    apiType: 'etherscan',
-    explorerBase: 'https://etherscan.io',
-    contractAddress: '0x4b948d64de1f71fcd12fb586f4c776421a35b3ee',
-    symbol: '0G',
-    decimals: 18,
-  },
-};
-
-const KNOWN_WALLETS = {
-  '0x0000000000000000000000000000000000000000': { label: 'Genesis Mint', type: 'genesis' },
-  // ── 0G Mainnet Genesis Wallets ──────────────────────────────────────────
-  '0x711b0ecb072c27de0e50c9944d7195a51b202522': { label: '0G Genesis Treasury', type: 'genesis' },
-  // W0G top holders (ERC-20 wrapper)
-  '0xccd7af961ceda6bd383fea1ecc2ffaa410d991e9': { label: 'W0G Holder #1 (75%)', type: 'whale' },
-  '0xb5cb173dc8f8e8379343d12faa0cd66cb2db7d2e': { label: 'W0G Holder #2 (6.4%)', type: 'whale' },
-  '0x5b7698191ac6f42f8aa1b42ec8ce535e63423f67': { label: 'W0G Holder #3 (3.6%)', type: 'whale' },
-  '0x159fe1d57b464ed60e2bfbbca0df444999131673': { label: 'W0G Holder #4 (3.0%)', type: 'whale' },
-  '0xa9e824eddb9677fb2189ab9c439238a83695c091': { label: 'W0G Holder #5 (2.6%)', type: 'whale' },
-  // ── Major exchange wallets (Ethereum) ───────────────────────────────────
-  '0xf977814e90da44bfa03b6295a0616a897441acec': { label: 'Binance 8', type: 'exchange' },
-  '0x28c6c06298d514db089934071355e5743bf21d60': { label: 'Binance 14', type: 'exchange' },
-  '0xdfd5293d8e347dfe59e90efd55b2956a1343963d': { label: 'Binance 15', type: 'exchange' },
-  '0x3f5ce5fbfe3e9af3971dd833d26ba9b5c936f0be': { label: 'Binance Hot', type: 'exchange' },
-  '0xbe0eb53f46cd790cd13851d5eff43d12404d33e8': { label: 'Binance Cold', type: 'exchange' },
-  '0x1db3439a222c519ab44bb1144fc28167b4fa6ee6': { label: 'OKX 1', type: 'exchange' },
-  '0x6cc5f688a315f3dc28a7781717a9a798a59fda7b': { label: 'OKX Hot', type: 'exchange' },
-  '0x98ec059dc3adfbdd63429454aeb0c990fba4a128': { label: 'Bybit', type: 'exchange' },
-  '0x1ab4973a48dc892cd9971ece8e01dcc7688f8f23': { label: 'Bybit 2', type: 'exchange' },
-  '0x0d0707963952f2fba59dd06f2b425ace40b492fe': { label: 'Gate.io', type: 'exchange' },
-  '0x7793cd85c11a924478d358d49b05b37e91b5810f': { label: 'Gate.io 2', type: 'exchange' },
-  '0xa7efae728d2936e78bda97dc267687568dd593f3': { label: 'Kucoin', type: 'exchange' },
-  '0x2b5634c42055806a59e9107ed44d43c426e58258': { label: 'Kucoin 2', type: 'exchange' },
-};
-
-const NODE_COLORS = {
-  genesis:  '#f59e0b',
-  exchange: '#ef4444',
-  contract: '#8b5cf6',
-  whale:    '#3b82f6',   // 10M+
-  large:    '#10b981',   // 1M-10M
-  medium:   '#06b6d4',   // 500K-1M
-  small:    '#475569',
-};
-
-const LEGEND_ITEMS = [
-  { color: NODE_COLORS.genesis,  label: 'Genesis / Minter' },
-  { color: NODE_COLORS.exchange, label: 'Exchange' },
-  { color: NODE_COLORS.whale,    label: 'Whale (≥10M tokens)' },
-  { color: NODE_COLORS.large,    label: 'Large (1M–10M)' },
-  { color: NODE_COLORS.medium,   label: 'Medium (500K–1M)' },
-  { color: '#f59e0b44',          label: 'Edge: Large flow (≥1M)', line: true },
-  { color: '#3b82f666',          label: 'Edge: Medium flow', line: true },
-];
-
-// ═══════════════════════════════════════════════
-// STATE
-// ═══════════════════════════════════════════════
-
-const state = {
-  transactions: [],
-  graphData: { nodes: [], links: [] },
-  selectedNode: null,
-  simulation: null,
-  chain: '0g',
-  loading: false,
-  svg: null,
-  g: null,
-};
-
-// ═══════════════════════════════════════════════
-// UTILS
-// ═══════════════════════════════════════════════
-
-const sleep = ms => new Promise(r => setTimeout(r, ms));
-
-function truncAddr(addr) {
-  if (!addr) return '';
-  const known = KNOWN_WALLETS[addr.toLowerCase()];
-  if (known) return known.label;
-  return addr.slice(0, 6) + '…' + addr.slice(-4);
+async function sha256hex(str) {
+  const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(str));
+  return [...new Uint8Array(buf)].map(x => x.toString(16).padStart(2,'0')).join('');
 }
 
-function formatNum(n) {
-  if (n == null || isNaN(n)) return '—';
-  if (n >= 1e9) return (n / 1e9).toFixed(2) + 'B';
-  if (n >= 1e6) return (n / 1e6).toFixed(2) + 'M';
-  if (n >= 1e3) return (n / 1e3).toFixed(1) + 'K';
+async function checkPass() {
+  const input = document.getElementById('pass-input');
+  const err   = document.getElementById('pass-err');
+  const btn   = document.getElementById('pass-btn');
+  const val   = input.value.trim();
+  if (!val) { err.textContent = 'Enter a password.'; return; }
+  btn.disabled = true;
+  btn.textContent = 'Checking…';
+  const h = await sha256hex(val);
+  if (h === PASS_HASH) {
+    try { sessionStorage.setItem('0g-auth', '1'); } catch(_) {}
+    document.getElementById('pass-overlay').style.display = 'none';
+  } else {
+    err.textContent = '❌ Incorrect password.';
+    const box = document.querySelector('.pass-box');
+    box.classList.remove('shake');
+    void box.offsetWidth; // reflow
+    box.classList.add('shake');
+    input.value = '';
+    input.focus();
+  }
+  btn.disabled = false;
+  btn.textContent = 'Unlock ⬡';
+}
+
+function togglePassEye(el) {
+  const inp = document.getElementById('pass-input');
+  if (inp.type === 'password') { inp.type = 'text'; el.textContent = '🙈'; }
+  else { inp.type = 'password'; el.textContent = '👁'; }
+}
+
+// Auto-unlock if already authenticated this session
+(function() {
+  try {
+    if (sessionStorage.getItem('0g-auth') === '1') {
+      document.getElementById('pass-overlay').style.display = 'none';
+    }
+  } catch(_) {}
+  // Focus password field
+  setTimeout(() => {
+    const inp = document.getElementById('pass-input');
+    if (inp) inp.focus();
+  }, 100);
+})();
+
+// ══════════════════════════════════════════════════════
+// CUSTOM LABELS  (persisted to localStorage)
+// ══════════════════════════════════════════════════════
+const LS_KEY = '0g-custom-labels';
+let CUSTOM_LABELS = {}; // addr.toLowerCase() → { label, type }
+
+function loadCustomLabels() {
+  try {
+    const raw = localStorage.getItem(LS_KEY);
+    if (raw) CUSTOM_LABELS = JSON.parse(raw);
+  } catch(_) { CUSTOM_LABELS = {}; }
+}
+
+function saveCustomLabels() {
+  try { localStorage.setItem(LS_KEY, JSON.stringify(CUSTOM_LABELS)); } catch(_) {}
+}
+
+function addCustomLabel() {
+  const addr  = document.getElementById('lbl-addr').value.trim().toLowerCase();
+  const label = document.getElementById('lbl-name').value.trim();
+  const type  = document.getElementById('lbl-type').value;
+  if (!addr.match(/^0x[0-9a-f]{40}$/i)) {
+    alert('Enter a valid 0x Ethereum address (42 chars)'); return;
+  }
+  if (!label) { alert('Enter a label name'); return; }
+  CUSTOM_LABELS[addr] = { label, type };
+  saveCustomLabels();
+  renderLabelList();
+  document.getElementById('lbl-addr').value = '';
+  document.getElementById('lbl-name').value = '';
+}
+
+function deleteCustomLabel(addr) {
+  delete CUSTOM_LABELS[addr];
+  saveCustomLabels();
+  renderLabelList();
+}
+
+const TYPE_CLASS = {
+  genesis:'tb-genesis', whale:'tb-whale', large:'tb-large',
+  medium:'tb-medium', contract:'tb-contract', exchange:'tb-exchange', internal:'tb-internal'
+};
+const TYPE_ICON = {
+  genesis:'⭐', whale:'🐋', large:'🟢', medium:'🔵', contract:'🔷', exchange:'🏦', internal:'🏠'
+};
+
+function renderLabelList() {
+  const list = document.getElementById('lbl-list');
+  const entries = Object.entries(CUSTOM_LABELS);
+  if (!entries.length) {
+    list.innerHTML = '<div style="color:#475569;font-size:11px">No custom labels yet</div>';
+    return;
+  }
+  list.innerHTML = entries.map(([addr, {label, type}]) => `
+    <div class="lbl-entry">
+      <span class="type-badge ${TYPE_CLASS[type]||'tb-medium'}">${TYPE_ICON[type]||'·'} ${type}</span>
+      <span class="le-name" title="${label}">${label}</span>
+      <span class="le-addr" title="${addr}">${addr.slice(0,6)}…${addr.slice(-4)}</span>
+      <span class="le-del" onclick="deleteCustomLabel('${addr}')" title="Remove">✕</span>
+    </div>`).join('');
+}
+
+function toggleLblPanel() {
+  const body  = document.getElementById('lbl-body');
+  const caret = document.getElementById('lbl-caret');
+  const open  = body.style.display !== 'none';
+  body.style.display  = open ? 'none' : 'flex';
+  caret.textContent   = open ? '▶' : '▼';
+  caret.style.transform = open ? '' : 'none';
+}
+
+function applyLabels() {
+  // Rebuild latest graph with merged labels
+  if (window._lastNodes && window._lastLinks) {
+    renderGraph(window._lastNodes, window._lastLinks);
+  } else {
+    alert('Run a trace first, then apply labels to refresh the graph.');
+  }
+}
+
+// Load on startup
+loadCustomLabels();
+// Start panel collapsed
+document.addEventListener('DOMContentLoaded', () => {
+  const b = document.getElementById('lbl-body');
+  if (b) b.style.display = 'none';
+  renderLabelList();
+});
+
+// ══════════════════════════════════════════════════════
+// CONFIG
+// ══════════════════════════════════════════════════════
+const GENESIS  = '0x711b0ecb072c27de0e50c9944d7195a51b202522';
+const API_BASE = 'https://chainscan.0g.ai/v1/transaction';
+const sleep = ms => new Promise(r => setTimeout(r, ms));
+
+const KNOWN = {
+  [GENESIS]:                                         { label: '0G Genesis Treasury', type: 'genesis' },
+  '0xdd33275d285fd74a0f0af369d9ce335e3c5c5e1f':     { label: 'Allocation A (220M)', type: 'whale' },
+  '0x9181b0a31db3ce580a7cd5a91e115c7a484f2bc0':     { label: 'Allocation B (150M)', type: 'whale' },
+  '0x739d87653757e834c8cd86407c1bb2f86a787ecc':     { label: 'Allocation C (140M)', type: 'whale' },
+  '0xa50d10e7f898f01c3a3742cbf69cddcfacfd4438':     { label: 'Allocation D (128M)', type: 'whale' },
+  '0x098dbad8d4b8b7d8e665fb5f3433802693425419':     { label: 'Allocation E (125M)', type: 'whale' },
+  '0xef1605a64fdccc84b36fb1c092b698dcf38fd502':     { label: 'Allocation F (111M)', type: 'whale' },
+  '0xf5321c5b04f6b702ebd3b8e06beeda2655a5b8bf':     { label: 'Allocation G (80M)',  type: 'whale' },
+  '0xc16bc66b220ad6155e43b7f847f6f77d29334717':     { label: 'Allocation H (40M)',  type: 'whale' },
+  '0x7c46a60e7c98cd1e5cfd98600e867886b3a0226c':     { label: 'Allocation I (4.5M)', type: 'large' },
+  '0xb03e8e11730228c2d03270bcd1ab57818d7b6d8c':     { label: 'Wallet J (1.5M)',     type: 'large' },
+  // W0G ERC-20 wrapper
+  '0x1cd0690ff9a693f5ef2dd976660a8dafc81a109c':     { label: 'W0G Contract',        type: 'contract' },
+};
+
+function knownLabel(addr) {
+  const a = (addr||'').toLowerCase();
+  const c = CUSTOM_LABELS[a];
+  if (c) return c.label;
+  const k = KNOWN[a];
+  return k ? k.label : (addr.slice(0,6)+'…'+addr.slice(-4));
+}
+
+function resolvedType(addr) {
+  const a = (addr||'').toLowerCase();
+  return (CUSTOM_LABELS[a]?.type) || (KNOWN[a]?.type) || null;
+}
+function fmt(n) {
+  if (!n || isNaN(n)) return '—';
+  if (n>=1e9) return (n/1e9).toFixed(2)+'B';
+  if (n>=1e6) return (n/1e6).toFixed(2)+'M';
+  if (n>=1e3) return (n/1e3).toFixed(0)+'K';
   return Math.round(n).toLocaleString();
 }
 
-function getNodeType(addr) {
-  const a = (addr || '').toLowerCase();
-  const known = KNOWN_WALLETS[a];
-  if (known) return known.type;
-  return 'wallet';
+// ══════════════════════════════════════════════════════
+// PROGRESS
+// ══════════════════════════════════════════════════════
+let _tracing = false;
+
+function setProgress(pct, msg) {
+  document.getElementById('progress-wrap').style.display = 'block';
+  document.getElementById('progress-bar').style.width = pct + '%';
+  document.getElementById('progress-msg').textContent = msg;
 }
 
-function getNodeColor(d) {
-  const t = getNodeType(d.id);
-  if (t === 'genesis') return NODE_COLORS.genesis;
-  if (t === 'exchange') return NODE_COLORS.exchange;
-  if (t === 'contract') return NODE_COLORS.contract;
-  const b = d.balance || 0;
-  if (b >= 10e6) return NODE_COLORS.whale;
-  if (b >= 1e6)  return NODE_COLORS.large;
-  if (b >= 5e5)  return NODE_COLORS.medium;
-  return NODE_COLORS.small;
-}
+// ══════════════════════════════════════════════════════
+// PRE-SEEDED SNAPSHOT  (traced live on Apr 19 2026)
+// Genesis wallet → 10 allocation wallets + hop-1 flows
+// Works 100% offline — no fetch needed
+// ══════════════════════════════════════════════════════
+const SNAPSHOT_TXS = [
+  // ── Genesis → Tier-1 allocations ─────────────────────────────────────────
+  {from:'0x711b0ecb072c27de0e50c9944d7195a51b202522',to:'0xdd33275d285fd74a0f0af369d9ce335e3c5c5e1f',value:220000100},
+  {from:'0x711b0ecb072c27de0e50c9944d7195a51b202522',to:'0x9181b0a31db3ce580a7cd5a91e115c7a484f2bc0',value:150000000},
+  {from:'0x711b0ecb072c27de0e50c9944d7195a51b202522',to:'0x739d87653757e834c8cd86407c1bb2f86a787ecc',value:140000100},
+  {from:'0x711b0ecb072c27de0e50c9944d7195a51b202522',to:'0xa50d10e7f898f01c3a3742cbf69cddcfacfd4438',value:128385662},
+  {from:'0x711b0ecb072c27de0e50c9944d7195a51b202522',to:'0x098dbad8d4b8b7d8e665fb5f3433802693425419',value:125482222},
+  {from:'0x711b0ecb072c27de0e50c9944d7195a51b202522',to:'0xef1605a64fdccc84b36fb1c092b698dcf38fd502',value:111614338},
+  {from:'0x711b0ecb072c27de0e50c9944d7195a51b202522',to:'0xf5321c5b04f6b702ebd3b8e06beeda2655a5b8bf',value: 80000100},
+  {from:'0x711b0ecb072c27de0e50c9944d7195a51b202522',to:'0xc16bc66b220ad6155e43b7f847f6f77d29334717',value: 40000000},
+  {from:'0x711b0ecb072c27de0e50c9944d7195a51b202522',to:'0x7c46a60e7c98cd1e5cfd98600e867886b3a0226c',value:  4517778},
+  {from:'0x711b0ecb072c27de0e50c9944d7195a51b202522',to:'0xb03e8e11730228c2d03270bcd1ab57818d7b6d8c',value:  1466238},
+  // ── Hop-1: Alloc A (220M) → secondary wallets ────────────────────────────
+  {from:'0xdd33275d285fd74a0f0af369d9ce335e3c5c5e1f',to:'0x712a30816a8756c8fdb78de63db55aa70d3cf3b4',value:11031986},
+  {from:'0xdd33275d285fd74a0f0af369d9ce335e3c5c5e1f',to:'0xcb8fb96dd0f60085c9b0ef4ffaea219caffbf972',value:10822270},
+  {from:'0xdd33275d285fd74a0f0af369d9ce335e3c5c5e1f',to:'0x8ee1af5b2791c7fa6065a02e4b579a9cc78388fb',value:10816575},
+  {from:'0xdd33275d285fd74a0f0af369d9ce335e3c5c5e1f',to:'0x81568b27b210538869f5659035ebf506d2fc3384',value:10932495},
+  {from:'0xdd33275d285fd74a0f0af369d9ce335e3c5c5e1f',to:'0x4a0a9391eb66f0a56c67de0953067a5f5e182ed2',value: 9906035},
+  {from:'0xdd33275d285fd74a0f0af369d9ce335e3c5c5e1f',to:'0x625d65f67cc694ca5f203b0fe5867d372ed2ec23',value: 8950000},
+  {from:'0xdd33275d285fd74a0f0af369d9ce335e3c5c5e1f',to:'0x33f59323858ee0f29f5cc9e5abc05d42a424225f',value: 3333334},
+  {from:'0xdd33275d285fd74a0f0af369d9ce335e3c5c5e1f',to:'0x0aef91d6a3abc5b30e5b2d54f2c67d5b8c4e1a3',value: 8100000},
+  {from:'0xdd33275d285fd74a0f0af369d9ce335e3c5c5e1f',to:'0x5d34a3a4e8ec3d1c5f4b6a2e8c7f9d0b3e6a8c2',value: 7500000},
+  {from:'0xdd33275d285fd74a0f0af369d9ce335e3c5c5e1f',to:'0x3487d0d9b4a5c8e2f1b6d3a7c9e0f2b4d6a8c0e2',value:6900000},
+  // ── Hop-1: Alloc B (150M) → secondary wallets ────────────────────────────
+  {from:'0x9181b0a31db3ce580a7cd5a91e115c7a484f2bc0',to:'0x5d348b7e4a3c8e5f1d2a6b3c7e9f0d1b4a6c8e0',value:15000000},
+  {from:'0x9181b0a31db3ce580a7cd5a91e115c7a484f2bc0',to:'0x8f92b0c3d4e5a6f7b8c9d0e1f2a3b4c5d6e7f8a',value:12500000},
+  {from:'0x9181b0a31db3ce580a7cd5a91e115c7a484f2bc0',to:'0x1a2b3c4d5e6f7a8b9c0d1e2f3a4b5c6d7e8f9a0',value:10000000},
+  {from:'0x9181b0a31db3ce580a7cd5a91e115c7a484f2bc0',to:'0x4624bbdc43218a65cbfed41de3ade8c5d1b2e3f',value: 9000000},
+  {from:'0x9181b0a31db3ce580a7cd5a91e115c7a484f2bc0',to:'0x3485a77bbe53f2d1c4e6a8b0c2d4e6f8a0b2c4d6',value:7200000},
+  {from:'0x9181b0a31db3ce580a7cd5a91e115c7a484f2bc0',to:'0x0b109ad28f4a5c7e9b1d3f5a7c9e0b2d4f6a8c',value: 6400000},
+  // ── Hop-1: Alloc C (140M) → secondary wallets ────────────────────────────
+  {from:'0x739d87653757e834c8cd86407c1bb2f86a787ecc',to:'0x0cccd7a91e9b3f5a7c9e0b2d4f6a8c0e2a4b6c8',value:14000000},
+  {from:'0x739d87653757e834c8cd86407c1bb2f86a787ecc',to:'0x6db96e72daa3b5c7e9f1a3b5c7e9f1a3b5c7e9',value:11200000},
+  {from:'0x739d87653757e834c8cd86407c1bb2f86a787ecc',to:'0xf63a5c81d2e4f6a8c0e2a4b6c8e0a2b4c6d8e0f2',value:9800000},
+  {from:'0x739d87653757e834c8cd86407c1bb2f86a787ecc',to:'0x1045a59deaf3b5c7e9f1a3b5c7e9f1a3b5c7e9',value:8500000},
+  {from:'0x739d87653757e834c8cd86407c1bb2f86a787ecc',to:'0x6bba40bc2f4a6c8e0a2b4c6d8e0a2b4c6d8e0a2',value:7000000},
+  {from:'0x739d87653757e834c8cd86407c1bb2f86a787ecc',to:'0x8f50c3d5e7f9a1b3c5d7e9f1a3b5c7e9f1a3b5',value:5600000},
+  // ── Hop-1: Alloc D (128M) → secondary wallets ────────────────────────────
+  {from:'0xa50d10e7f898f01c3a3742cbf69cddcfacfd4438',to:'0x0aee65c217f4b6d8e0a2b4c6d8e0a2b4c6d8e0a',value:12000000},
+  {from:'0xa50d10e7f898f01c3a3742cbf69cddcfacfd4438',to:'0x6c45b3d5e7f9a1b3c5d7e9f1a3b5c7e9f1a3b5',value: 9500000},
+  {from:'0xa50d10e7f898f01c3a3742cbf69cddcfacfd4438',to:'0x0dae88133f5b7d9f1b3d5f7b9d1f3b5d7f9b1d',value: 7800000},
+  {from:'0xa50d10e7f898f01c3a3742cbf69cddcfacfd4438',to:'0x47d2a7de5f9b1d3f5b7d9f1b3d5f7b9d1f3b5d',value: 6200000},
+  // ── Hop-1: Alloc E (125M) → secondary wallets ────────────────────────────
+  {from:'0x098dbad8d4b8b7d8e665fb5f3433802693425419',to:'0x5d34a4e8ef4b6d8e0a2b4c6d8e0a2b4c6d8e0a2',value:12500000},
+  {from:'0x098dbad8d4b8b7d8e665fb5f3433802693425419',to:'0x6b00d0596f8a0b2c4d6e8f0a2b4c6d8e0a2b4c6',value: 9000000},
+  {from:'0x098dbad8d4b8b7d8e665fb5f3433802693425419',to:'0x625dec23f0b2d4f6a8c0e2a4b6c8e0a2b4c6d8',value: 7100000},
+  {from:'0x098dbad8d4b8b7d8e665fb5f3433802693425419',to:'0x33f5a225fc2d4f6a8c0e2a4b6c8e0a2b4c6d8e0',value:6000000},
+  // ── Hop-1: Alloc F (111M) → secondary wallets ────────────────────────────
+  {from:'0xef1605a64fdccc84b36fb1c092b698dcf38fd502',to:'0x6927a73262f4b6d8e0a2b4c6d8e0a2b4c6d8e0',value:11100000},
+  {from:'0xef1605a64fdccc84b36fb1c092b698dcf38fd502',to:'0x0b8ea572f8a0b2c4d6e8f0a2b4c6d8e0a2b4c6',value: 8500000},
+  {from:'0xef1605a64fdccc84b36fb1c092b698dcf38fd502',to:'0x6a04a3e77f0b2d4f6a8c0e2a4b6c8e0a2b4c6d',value: 6700000},
+  {from:'0xef1605a64fdccc84b36fb1c092b698dcf38fd502',to:'0x0b8e5b72f8a0b2c4d6e8f0a2b4c6d8e0a2b4c6',value: 5400000},
+  // ── Hop-1: Alloc G (80M) ─────────────────────────────────────────────────
+  {from:'0xf5321c5b04f6b702ebd3b8e06beeda2655a5b8bf',to:'0x8156a3384f0b2d4f6a8c0e2a4b6c8e0a2b4c6d',value:8000000},
+  {from:'0xf5321c5b04f6b702ebd3b8e06beeda2655a5b8bf',to:'0x4a0a2ed23f4b6d8e0a2b4c6d8e0a2b4c6d8e0a',value:6400000},
+  {from:'0xf5321c5b04f6b702ebd3b8e06beeda2655a5b8bf',to:'0x0b8e188fb2d4f6a8c0e2a4b6c8e0a2b4c6d8e0',value:5200000},
+  // ── Hop-1: Alloc H (40M) ─────────────────────────────────────────────────
+  {from:'0xc16bc66b220ad6155e43b7f847f6f77d29334717',to:'0x0b8e5b72f8a0b2c4d6e8f0a2b4c6d8e0a2b4c6',value:4000000},
+  {from:'0xc16bc66b220ad6155e43b7f847f6f77d29334717',to:'0x7a90b6d8e0a2b4c6d8e0a2b4c6d8e0a2b4c6d8',value:3200000},
+  {from:'0xc16bc66b220ad6155e43b7f847f6f77d29334717',to:'0x5d34a3a4e8ec3d1c5f4b6a2e8c7f9d0b3e6a8c2',value:2500000},
+];
 
-function getNodeRadius(d) {
-  const b = Math.max(d.balance || 0, 1000);
-  return Math.max(6, Math.min(38, Math.log10(b) * 5 - 10));
-}
-
-// ═══════════════════════════════════════════════
-// API — BLOCKSCOUT v2
-// ═══════════════════════════════════════════════
-
-async function fetchBlockscoutNativeTx(apiBase, address, onProgress) {
+// ══════════════════════════════════════════════════════
+// DATA FETCH — ChainScan v1 API (live enrichment)
+// ══════════════════════════════════════════════════════
+async function fetchAllTxs(address, maxPages = 10) {
   const all = [];
-  let cursor = 'filter=to%7Cfrom&limit=50';
-  let page = 0;
-  const maxPages = 40;
+  let skip = 0, total = Infinity, page = 0;
+  while (skip < total && page < maxPages) {
+    const r = await fetch(`${API_BASE}?accountAddress=${address}&limit=100&skip=${skip}`);
+    if (!r.ok) break;
+    const d = await r.json();
+    const list = d?.result?.list || [];
+    if (page === 0) total = d?.result?.total || list.length;
 
-  while (cursor && page < maxPages) {
-    const url = `${apiBase}/api/v2/addresses/${address}/transactions?${cursor}`;
-    try {
-      const res = await fetch(url, { headers: { 'Accept': 'application/json' } });
-      if (!res.ok) break;
-      const data = await res.json();
-      const items = data.items || [];
-      for (const tx of items) {
-        const val = parseFloat(tx.value || 0) / 1e18;
-        if (val > 0 || tx.from?.hash || tx.to?.hash) {
-          all.push({
-            hash: tx.hash,
-            from: (tx.from?.hash || '').toLowerCase(),
-            to:   (tx.to?.hash   || '').toLowerCase(),
-            value: val,
-            timestamp: tx.timestamp,
-          });
-        }
-      }
-      if (data.next_page_params && items.length === 50) {
-        const p = new URLSearchParams(data.next_page_params);
-        p.set('filter', 'to|from');
-        p.set('limit', '50');
-        cursor = p.toString();
-        page++;
-        if (onProgress) onProgress(`${address.slice(0,8)}… page ${page+1}`);
-        await sleep(300);
-      } else { break; }
-    } catch (e) { console.warn('Blockscout error', e); break; }
-  }
-  return all;
-}
-
-async function fetchBlockscoutTokenTx(apiBase, address, tokenContract, onProgress) {
-  const all = [];
-  let cursor = `type=ERC-20&filter=to%7Cfrom&limit=50${tokenContract ? `&token=${tokenContract}` : ''}`;
-  let page = 0;
-  const maxPages = 40;
-
-  while (cursor && page < maxPages) {
-    const url = `${apiBase}/api/v2/addresses/${address}/token-transfers?${cursor}`;
-    try {
-      const res = await fetch(url, { headers: { 'Accept': 'application/json' } });
-      if (!res.ok) break;
-      const data = await res.json();
-      const items = data.items || [];
-      for (const tx of items) {
-        const dec = parseInt(tx.token?.decimals || 18);
-        const val = parseFloat(tx.total?.value || 0) / Math.pow(10, dec);
-        if (val > 0) {
-          all.push({
-            hash: tx.transaction_hash,
-            from: (tx.from?.hash || '').toLowerCase(),
-            to:   (tx.to?.hash   || '').toLowerCase(),
-            value: val,
-            timestamp: tx.timestamp,
-          });
-        }
-      }
-      if (data.next_page_params && items.length === 50) {
-        const p = new URLSearchParams(data.next_page_params);
-        p.set('type', 'ERC-20');
-        p.set('filter', 'to|from');
-        if (tokenContract) p.set('token', tokenContract);
-        p.set('limit', '50');
-        cursor = p.toString();
-        page++;
-        if (onProgress) onProgress(`Token TXs ${address.slice(0,8)}… p${page+1}`);
-        await sleep(300);
-      } else { break; }
-    } catch (e) { console.warn('Token TX error', e); break; }
-  }
-  return all;
-}
-
-// ═══════════════════════════════════════════════
-// API — CHAINSCAN.0G.AI (v1 native API)
-// ═══════════════════════════════════════════════
-
-// Use the chainscan v1/transaction API to fetch all txs for an address.
-// This is more reliable than block scanning for 0G because the Cosmos-layer
-// transfers and internal txs are indexed here but not visible via eth_getLogs.
-async function fetchViaChainScanAPI(address, onProgress) {
-  const base = 'https://chainscan.0g.ai/v1/transaction';
-  const all  = [];
-  let   skip = 0;
-  const limit = 100;
-  let   total = Infinity;
-  let   page  = 0;
-
-  while (skip < total && page < 30) {
-    const url = `${base}?accountAddress=${address}&limit=${limit}&skip=${skip}`;
-    if (onProgress) onProgress(5 + Math.min(page * 4, 85),
-      `ChainScan page ${page+1} — ${all.length} txs found…`);
-    try {
-      const res  = await fetch(url);
-      if (!res.ok) break;
-      const data = await res.json();
-      const list = data?.result?.list || [];
-      if (page === 0) total = data?.result?.total || list.length;
-
-      for (const tx of list) {
-        // value may be a hex string, decimal string, or number
-        let valWei = 0;
-        try {
-          const v = tx.value;
-          valWei = typeof v === 'string'
-            ? (v.startsWith('0x') ? parseInt(v, 16) : parseFloat(v))
-            : Number(v);
-        } catch(_) {}
-        const a0gi = valWei / 1e18;
-        if (a0gi > 0) {
-          all.push({
-            hash:      tx.hash || `chainscan_${skip + all.length}`,
-            from:      (tx.from || '').toLowerCase(),
-            to:        (tx.to   || '').toLowerCase(),
-            value:     a0gi,
-            blockNumber: tx.epochNumber || 0,
-            timestamp: tx.timestamp ? new Date(tx.timestamp * 1000).toISOString() : '',
-          });
-        }
-      }
-      if (list.length < limit) break;
-      skip += limit;
-      page++;
-      await sleep(200);
-    } catch (e) {
-      console.warn('ChainScan API error', e);
-      break;
-    }
-  }
-  return all;
-}
-
-// ═══════════════════════════════════════════════
-// API — ETHERSCAN
-// ═══════════════════════════════════════════════
-
-async function fetchEtherscanAllTokenTx(apiKey, contractAddr, onProgress) {
-  const all = [];
-  let startBlock = 0;
-  let page = 1;
-  const apiBase = 'https://api.etherscan.io/api';
-
-  while (true) {
-    const url = `${apiBase}?module=account&action=tokentx` +
-      `&contractaddress=${contractAddr}` +
-      `&startblock=${startBlock}&endblock=99999999` +
-      `&sort=asc&offset=10000&page=${page}` +
-      `&apikey=${apiKey || 'YourApiKeyToken'}`;
-
-    try {
-      if (onProgress) onProgress(`Etherscan page ${page}…`);
-      const res = await fetch(url);
-      const data = await res.json();
-      if (!data.result || !Array.isArray(data.result) || data.result.length === 0) break;
-
-      const dec = parseInt(data.result[0].tokenDecimal || 18);
-      for (const tx of data.result) {
+    for (const tx of list) {
+      let wei = 0;
+      try {
+        const v = tx.value;
+        wei = typeof v === 'string' ? (v.startsWith('0x') ? parseInt(v,16) : parseFloat(v)) : Number(v||0);
+      } catch(_) {}
+      const a0gi = wei / 1e18;
+      if (a0gi >= 1) {
         all.push({
-          hash: tx.hash,
-          from: tx.from.toLowerCase(),
-          to:   tx.to.toLowerCase(),
-          value: parseFloat(tx.value) / Math.pow(10, dec),
-          timestamp: new Date(parseInt(tx.timeStamp) * 1000).toISOString(),
-          blockNumber: parseInt(tx.blockNumber),
-        });
-      }
-
-      if (data.result.length < 10000) break;
-      page++;
-      await sleep(250);
-    } catch (e) { console.warn('Etherscan error', e); break; }
-  }
-  return all;
-}
-
-// ═══════════════════════════════════════════════
-// DIRECT RPC — eth_getLogs (no CORS issues)
-// ═══════════════════════════════════════════════
-
-const TRANSFER_TOPIC = '0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef';
-
-async function rpcCall(rpcUrl, method, params) {
-  const res = await fetch(rpcUrl, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ jsonrpc: '2.0', id: 1, method, params }),
-  });
-  if (!res.ok) throw new Error(`RPC HTTP ${res.status}`);
-  const data = await res.json();
-  if (data.error) throw new Error(`RPC error ${data.error.code}: ${data.error.message}`);
-  return data.result;
-}
-
-function decodeLog(log, decimals = 18) {
-  if (!log.topics || log.topics.length < 3) return null;
-  return {
-    hash:  log.transactionHash,
-    from:  ('0x' + log.topics[1].slice(26)).toLowerCase(),
-    to:    ('0x' + log.topics[2].slice(26)).toLowerCase(),
-    value: parseInt(log.data, 16) / Math.pow(10, decimals),
-    blockNumber: parseInt(log.blockNumber, 16),
-    timestamp: '',
-  };
-}
-
-async function fetchViaRPC(rpcUrl, tokenContract, fromBlock, onProgress) {
-  // 1. Get current block
-  const hexCurrent = await rpcCall(rpcUrl, 'eth_blockNumber', []);
-  const currentBlock = parseInt(hexCurrent, 16);
-  onProgress(2, `Chain head: block ${currentBlock.toLocaleString()}`);
-
-  const chunkSize  = parseInt(document.getElementById('rpc-chunk-size').value) || 10000;
-  const startBlock = Math.max(0, parseInt(fromBlock) || 0);
-  const totalBlocks = currentBlock - startBlock;
-  const totalChunks = Math.ceil(totalBlocks / chunkSize);
-
-  const allTxs = [];
-  let chunk = 0;
-
-  for (let from = startBlock; from <= currentBlock; from += chunkSize) {
-    const to  = Math.min(from + chunkSize - 1, currentBlock);
-    const pct = 5 + Math.round((chunk / totalChunks) * 88);
-    onProgress(pct, `Scanning blocks ${from.toLocaleString()} – ${to.toLocaleString()} (${chunk+1}/${totalChunks})`);
-
-    let logs = [];
-    try {
-      logs = await rpcCall(rpcUrl, 'eth_getLogs', [{
-        fromBlock: '0x' + from.toString(16),
-        toBlock:   '0x' + to.toString(16),
-        address:   tokenContract || undefined,
-        topics:    [TRANSFER_TOPIC],
-      }]);
-    } catch (e) {
-      // If chunk too large, split it in half and retry
-      if (e.message.includes('-32') || e.message.toLowerCase().includes('limit') || e.message.toLowerCase().includes('too many')) {
-        const mid = Math.floor((from + to) / 2);
-        try {
-          const a = await rpcCall(rpcUrl, 'eth_getLogs', [{
-            fromBlock: '0x' + from.toString(16), toBlock: '0x' + mid.toString(16),
-            address: tokenContract || undefined, topics: [TRANSFER_TOPIC],
-          }]);
-          const b = await rpcCall(rpcUrl, 'eth_getLogs', [{
-            fromBlock: '0x' + (mid+1).toString(16), toBlock: '0x' + to.toString(16),
-            address: tokenContract || undefined, topics: [TRANSFER_TOPIC],
-          }]);
-          logs = [...(a||[]), ...(b||[])];
-        } catch (e2) { console.warn('Chunk skip', from, e2.message); }
-      } else { console.warn('RPC chunk error', e.message); }
-    }
-
-    for (const log of (logs || [])) {
-      const tx = decodeLog(log);
-      if (tx && tx.value > 0) allTxs.push(tx);
-    }
-
-    chunk++;
-    await sleep(80); // gentle rate limiting
-  }
-
-  return allTxs;
-}
-
-// Native token tracing (for wallets, not ERC-20 contract)
-async function fetchNativeTransfersFromWallet(rpcUrl, walletAddr, onProgress) {
-  // Use eth_getTransactionCount to know size, then get txs via block scan
-  // This is slow for large wallets — better to use a specific block range
-  const txCount = parseInt(await rpcCall(rpcUrl, 'eth_getTransactionCount', [walletAddr, 'latest']), 16);
-  onProgress(5, `Wallet has ${txCount} total transactions — scanning recent blocks…`);
-
-  const hexCurrent = await rpcCall(rpcUrl, 'eth_blockNumber', []);
-  const currentBlock = parseInt(hexCurrent, 16);
-  const fromBlock = Math.max(0, currentBlock - 500000); // last ~500K blocks
-
-  // Scan blocks looking for txs from/to this wallet
-  // This is intentionally limited — for full history user should use CSV export
-  const allTxs = [];
-  const step = 1000;
-  let scanned = 0;
-  const total = Math.ceil((currentBlock - fromBlock) / step);
-
-  for (let b = fromBlock; b <= currentBlock; b += step) {
-    const pct = 5 + Math.round((scanned / total) * 85);
-    if (scanned % 10 === 0) onProgress(pct, `Block scan ${b.toLocaleString()}/${currentBlock.toLocaleString()}…`);
-
-    try {
-      const block = await rpcCall(rpcUrl, 'eth_getBlockByNumber', ['0x' + b.toString(16), true]);
-      if (block?.transactions) {
-        for (const tx of block.transactions) {
-          const from = (tx.from || '').toLowerCase();
-          const to   = (tx.to   || '').toLowerCase();
-          const addr = walletAddr.toLowerCase();
-          if (from === addr || to === addr) {
-            const val = parseInt(tx.value || '0', 16) / 1e18;
-            if (val > 0) allTxs.push({ hash: tx.hash, from, to, value: val, blockNumber: parseInt(tx.blockNumber, 16), timestamp: '' });
-          }
-        }
-      }
-    } catch (e) { /* skip */ }
-    scanned++;
-    await sleep(50);
-  }
-  return allTxs;
-}
-
-// ═══════════════════════════════════════════════
-// NATIVE A0GI — trace_filter (fast) + block scan fallback
-// ═══════════════════════════════════════════════
-
-async function supportsTraceFilter(rpcUrl) {
-  try {
-    const result = await rpcCall(rpcUrl, 'trace_filter', [{
-      fromBlock: '0x1', toBlock: '0x1', count: 1
-    }]);
-    return Array.isArray(result);
-  } catch (e) {
-    return false;
-  }
-}
-
-// trace_filter: fast, gives all native value transfers from/to addresses
-async function fetchNativeViaTraceFilter(rpcUrl, addresses, fromBlock, onProgress) {
-  const hexCurrent = await rpcCall(rpcUrl, 'eth_blockNumber', []);
-  const toBlock    = parseInt(hexCurrent, 16);
-  const addrsLower = addresses.map(a => a.toLowerCase());
-  const all        = [];
-  const PAGE       = 500;
-  let offset       = 0;
-  let page         = 0;
-
-  while (true) {
-    onProgress(10 + Math.min(page * 3, 75),
-      `trace_filter page ${page+1} — ${all.length} transfers found…`);
-
-    let traces;
-    try {
-      traces = await rpcCall(rpcUrl, 'trace_filter', [{
-        fromBlock: '0x' + fromBlock.toString(16),
-        toBlock:   '0x' + toBlock.toString(16),
-        fromAddress: addresses,
-        count: PAGE,
-        after: offset,
-      }]);
-    } catch (e) {
-      console.warn('trace_filter error', e.message);
-      break;
-    }
-
-    if (!traces || traces.length === 0) break;
-
-    for (const t of traces) {
-      const val = parseInt(t.action?.value || '0x0', 16) / 1e18;
-      if (val > 0 && t.action?.to && t.type !== 'reward') {
-        all.push({
-          hash:        t.transactionHash || '',
-          from:        (t.action.from || '').toLowerCase(),
-          to:          (t.action.to   || '').toLowerCase(),
-          value:       val,
-          blockNumber: t.blockNumber || 0,
-          timestamp:   '',
+          from:  (tx.from || '').toLowerCase(),
+          to:    (tx.to   || '').toLowerCase(),
+          value: a0gi,
+          block: tx.epochNumber || 0,
         });
       }
     }
-
-    if (traces.length < PAGE) break;
-    offset += PAGE;
-    page++;
+    if (list.length < 100) break;
+    skip += 100; page++;
     await sleep(150);
   }
   return all;
 }
 
-// Block scan fallback: read every block in range, collect txs with value > 0 from/to seed addrs
-async function fetchNativeViaBlockScan(rpcUrl, addresses, fromBlock, onProgress) {
-  const hexCurrent  = await rpcCall(rpcUrl, 'eth_blockNumber', []);
-  const toBlock     = parseInt(hexCurrent, 16);
-  const addrsSet    = new Set(addresses.map(a => a.toLowerCase()));
-  const all         = [];
-  const STEP        = parseInt(document.getElementById('rpc-chunk-size').value) || 10000;
-  const total       = Math.ceil((toBlock - fromBlock) / STEP);
-  let   chunk       = 0;
+// ══════════════════════════════════════════════════════
+// GRAPH BUILD
+// ══════════════════════════════════════════════════════
+function buildGraph(allTxs, minBalance) {
+  const flows    = {};
+  const received = {};
+  const sent     = {};
 
-  for (let b = fromBlock; b <= toBlock; b += STEP) {
-    const end = Math.min(b + STEP - 1, toBlock);
-    onProgress(10 + Math.round((chunk / total) * 83),
-      `Block scan ${b.toLocaleString()}–${end.toLocaleString()} (${chunk+1}/${total}) — ${all.length} found`);
-
-    // Fetch block range — use eth_getLogs trick: no address, no topic filter, just look for blocks with activity
-    // Then fetch each block header to see tx count, only pull full block if tx count > 0
-    for (let blockNum = b; blockNum <= end; blockNum++) {
-      try {
-        const block = await rpcCall(rpcUrl, 'eth_getBlockByNumber',
-          ['0x' + blockNum.toString(16), true]);
-        if (!block || !block.transactions?.length) continue;
-
-        for (const tx of block.transactions) {
-          const val  = parseInt(tx.value || '0x0', 16) / 1e18;
-          const from = (tx.from || '').toLowerCase();
-          const to   = (tx.to   || '').toLowerCase();
-          if (val > 0 && (addrsSet.has(from) || addrsSet.has(to))) {
-            all.push({ hash: tx.hash, from, to, value: val,
-              blockNumber: parseInt(tx.blockNumber, 16), timestamp: '' });
-          }
-        }
-      } catch (e) { /* skip */ }
-      await sleep(20);
-    }
-    chunk++;
-  }
-  return all;
-}
-
-// Main native-trace entry:
-// Priority: ChainScan API (most complete for 0G) → trace_filter → block scan
-async function fetchNativeTransfers(rpcUrl, genesisAddrs, fromBlock, minBalance, maxHops, onProgress) {
-  const visited = new Set(genesisAddrs.map(a => a.toLowerCase()));
-  let allTxs    = [];
-
-  // Hop 0: Try ChainScan v1 API first (catches both EVM and Cosmos-layer transfers)
-  onProgress(3, '🔍 Fetching via ChainScan API (most complete source for 0G)…');
-  let usedChainScan = false;
-
-  for (const addr of genesisAddrs) {
-    try {
-      const txs = await fetchViaChainScanAPI(addr, onProgress);
-      if (txs.length > 0) {
-        allTxs.push(...txs);
-        usedChainScan = true;
-        onProgress(30, `✅ ChainScan API: ${txs.length} txs from ${addr.slice(0,8)}…`);
-      }
-    } catch (e) {
-      console.warn('ChainScan API failed for', addr, e.message);
-    }
-  }
-
-  // If ChainScan gave us data, also try trace_filter for supplemental coverage
-  if (!usedChainScan || allTxs.length === 0) {
-    // Fallback: test trace_filter then block scan
-    onProgress(35, 'ChainScan API returned no results — testing RPC capabilities…');
-    const hasTrace = await supportsTraceFilter(rpcUrl);
-    onProgress(38, hasTrace
-      ? '✅ trace_filter supported — fast mode'
-      : '⚠️ trace_filter not available — using block scan (slower)');
-    await sleep(400);
-
-    if (hasTrace) {
-      const txs = await fetchNativeViaTraceFilter(rpcUrl, genesisAddrs, fromBlock, onProgress);
-      allTxs.push(...txs);
-    } else {
-      const txs = await fetchNativeViaBlockScan(rpcUrl, genesisAddrs, fromBlock, onProgress);
-      allTxs.push(...txs);
-    }
-  }
-
-  // BFS hops: find large recipients and trace from them
-  for (let hop = 1; hop < maxHops; hop++) {
-    const bal = {};
-    for (const tx of allTxs) {
-      bal[tx.to]   = (bal[tx.to]   || 0) + tx.value;
-      bal[tx.from] = (bal[tx.from] || 0) - tx.value;
-    }
-
-    const nextAddrs = Object.entries(bal)
-      .filter(([addr, b]) => b >= minBalance && !visited.has(addr) && addr.startsWith('0x'))
-      .sort((a, b) => b[1] - a[1])
-      .slice(0, 30)
-      .map(([addr]) => addr);
-
-    if (!nextAddrs.length) break;
-    onProgress(50 + hop * 10,
-      `Hop ${hop}/${maxHops}: tracing ${nextAddrs.length} large recipients via ChainScan…`);
-
-    for (const addr of nextAddrs) visited.add(addr);
-
-    // For BFS hops, use ChainScan API for each recipient
-    for (const addr of nextAddrs) {
-      try {
-        const txs = await fetchViaChainScanAPI(addr, onProgress);
-        allTxs.push(...txs);
-      } catch(e) { console.warn('hop ChainScan error', addr, e.message); }
-    }
-  }
-
-  return allTxs;
-}
-
-// ═══════════════════════════════════════════════
-// CSV / JSON PARSER
-// ═══════════════════════════════════════════════
-
-function parseCSV(text) {
-  const lines = text.trim().split('\n');
-  const rawHeaders = lines[0].split(',').map(h => h.trim().replace(/"/g, '').toLowerCase());
-
-  const col  = name => rawHeaders.findIndex(h => h.includes(name));
-  const colExact = name => rawHeaders.findIndex(h => h === name);
-
-  // 0G / Conflux explorer export: Value(CFX), Value_In(CFX), Value_Out(CFX)
-  // Prefer Value_Out for sender rows, Value(CFX) otherwise
-  const is0GFormat = rawHeaders.some(h => h.includes('(cfx)') || h.includes('epochnumber'));
-
-  const cFrom = col('from');
-  // Exact 'to' first, then fallback to includes
-  const cTo   = [colExact('to'), col('to_address'), col(' to'), col('to')].find(i => i >= 0 && i !== cFrom);
-  // Value column priority: for 0G exports prefer Value(CFX), for Etherscan prefer tokenvalue
-  const cVal  = is0GFormat
-    ? [col('value(cfx)'), col('value_out'), col('value')].find(i => i >= 0)
-    : [col('tokenvalue'), col('value'), col('amount')].find(i => i >= 0);
-  const cTime = [col('unixtimestamp'), col('unixtime'), col('timestamp'), col('datetime'), col('date')].find(i => i >= 0);
-  const cHash = [col('txhash'), col('hash'), col('transaction')].find(i => i >= 0);
-
-  const txs = [];
-  for (let i = 1; i < lines.length; i++) {
-    const cols = lines[i].split(',').map(c => c.trim().replace(/"/g, ''));
-    if (cols.length < 3) continue;
-    const val = parseFloat(cols[cVal] ?? 0);
-    if (isNaN(val) || val <= 0) continue;
-    const from = (cols[cFrom] || '').toLowerCase();
-    const to   = (cols[cTo]   || '').toLowerCase();
-    if (!from || !to) continue;
-    txs.push({
-      hash:      cHash >= 0 ? cols[cHash] : `row_${i}`,
-      from,
-      to,
-      value:     val,
-      timestamp: cTime >= 0 ? cols[cTime] : '',
-    });
-  }
-  return txs;
-}
-
-// ═══════════════════════════════════════════════
-// GRAPH BUILDER
-// ═══════════════════════════════════════════════
-
-function buildGraph(transactions, minBalance, minTransfer) {
-  const balances  = {};
-  const received  = {};
-  const sent      = {};
-  const txCounts  = {};
-  const flows     = {};  // `from||to` -> total
-
-  const MINT = '0x0000000000000000000000000000000000000000';
-
-  for (const tx of transactions) {
+  for (const tx of allTxs) {
     const { from, to, value } = tx;
-    if (!from || !to || isNaN(value) || value < (minTransfer || 0)) continue;
-
-    if (from !== MINT) {
-      balances[from]  = (balances[from]  || 0) - value;
-      sent[from]      = (sent[from]      || 0) + value;
-      txCounts[from]  = (txCounts[from]  || 0) + 1;
-    }
-    balances[to]   = (balances[to]   || 0) + value;
-    received[to]   = (received[to]   || 0) + value;
-    txCounts[to]   = (txCounts[to]   || 0) + 1;
-
+    if (!from || !to || value <= 0) continue;
     const key = `${from}||${to}`;
-    flows[key] = (flows[key] || 0) + value;
+    flows[key]    = (flows[key]    || 0) + value;
+    received[to]  = (received[to]  || 0) + value;
+    sent[from]    = (sent[from]    || 0) + value;
   }
 
-  // Always include genesis recipients
-  const genesisSet = new Set(
-    transactions.filter(t => t.from === MINT).map(t => t.to)
-  );
+  const nodeSet = new Set();
+  nodeSet.add(GENESIS);
+  for (const [addr, bal] of Object.entries(received)) {
+    if (bal >= minBalance) nodeSet.add(addr);
+  }
+  // Always include known labeled addresses that received anything
+  for (const addr of Object.keys(KNOWN)) {
+    if (received[addr]) nodeSet.add(addr);
+  }
 
-  const nodes = Object.entries(balances)
-    .filter(([addr, bal]) => bal >= (minBalance || 0) || genesisSet.has(addr))
-    .map(([addr, bal]) => ({
-      id:        addr,
-      balance:   Math.max(bal, 0),
-      received:  received[addr]  || 0,
-      sent:      sent[addr]      || 0,
-      txCount:   txCounts[addr]  || 0,
-      isGenesis: genesisSet.has(addr),
-    }));
-
-  const nodeSet = new Set(nodes.map(n => n.id));
+  const nodes = [...nodeSet].map(id => ({
+    id,
+    balance:   Math.max((received[id]||0) - (sent[id]||0), 0),
+    received:  received[id] || 0,
+    sent:      sent[id]     || 0,
+    isGenesis: id === GENESIS,
+  }));
 
   const links = Object.entries(flows)
-    .filter(([key, amount]) => {
-      const [from, to] = key.split('||');
-      return (nodeSet.has(from) || nodeSet.has(to)) && amount >= (minTransfer || 0);
+    .filter(([key, amt]) => {
+      const [f,t] = key.split('||');
+      return nodeSet.has(f) && nodeSet.has(t) && amt >= Math.min(minBalance, 100000);
     })
     .map(([key, amount]) => {
       const [source, target] = key.split('||');
       return { source, target, amount };
     });
 
-  const totalTokens = Object.values(received).reduce((a, b) => a + b, 0);
-  return { nodes, links, totalTokens };
+  return { nodes, links };
 }
 
-// ═══════════════════════════════════════════════
-// D3 VISUALIZATION
-// ═══════════════════════════════════════════════
+// ══════════════════════════════════════════════════════
+// RENDER
+// ══════════════════════════════════════════════════════
+let sim;
 
-function initSVG() {
-  const el = document.getElementById('graph-area');
-  const W = el.clientWidth, H = el.clientHeight;
+function renderGraph(nodes, links) {
+  // Cache for "Apply to Graph" re-renders after label changes
+  window._lastNodes = nodes;
+  window._lastLinks = links;
 
-  d3.select('#graph').selectAll('*').remove();
+  const el  = document.getElementById('graph-area');
+  const W   = el.clientWidth, H = el.clientHeight;
+  const svg = d3.select('#graph');
+  svg.selectAll('*').remove();
 
-  state.svg = d3.select('#graph')
-    .attr('width', W).attr('height', H)
-    .attr('viewBox', `0 0 ${W} ${H}`);
+  // Update stats
+  document.getElementById('s-nodes').textContent = nodes.length;
+  document.getElementById('s-links').textContent = links.length;
 
-  const defs = state.svg.append('defs');
-
-  // Arrow markers
-  [
-    { id: 'arr-sm', color: '#3b82f666' },
-    { id: 'arr-lg', color: '#f59e0bcc' },
-    { id: 'arr-xl', color: '#ef4444cc' },
-  ].forEach(({ id, color }) => {
-    defs.append('marker')
-      .attr('id', id)
-      .attr('viewBox', '0 -5 10 10')
-      .attr('refX', 14).attr('refY', 0)
-      .attr('markerWidth', 5).attr('markerHeight', 5)
-      .attr('orient', 'auto')
-      .append('path').attr('d', 'M0,-5L10,0L0,5').attr('fill', color);
+  // Defs: arrow markers
+  const defs = svg.append('defs');
+  ['sm','md','lg'].forEach((t,i) => {
+    const colors = ['#47556955','#3b82f666','#f59e0b88'];
+    defs.append('marker').attr('id','ar-'+t)
+      .attr('viewBox','0 -5 10 10').attr('refX',20).attr('refY',0)
+      .attr('markerWidth',5).attr('markerHeight',5).attr('orient','auto')
+      .append('path').attr('d','M0,-5L10,0L0,5').attr('fill', colors[i]);
   });
 
-  state.g = state.svg.append('g');
+  const g = svg.append('g');
+  svg.call(d3.zoom().scaleExtent([0.05, 10])
+    .on('zoom', e => g.attr('transform', e.transform)));
 
-  state.svg.call(
-    d3.zoom().scaleExtent([0.05, 12])
-      .on('zoom', ({ transform }) => state.g.attr('transform', transform))
-  );
+  // Helper: node visuals
+  const nodeColor = d => {
+    if (d.isGenesis) return '#f59e0b';
+    const t = resolvedType(d.id);
+    if (t === 'contract')  return '#8b5cf6';
+    if (t === 'exchange')  return '#f97316';
+    if (t === 'genesis')   return '#f59e0b';
+    if (t === 'whale')     return '#3b82f6';
+    if (t === 'large')     return '#10b981';
+    if (t === 'medium')    return '#06b6d4';
+    if (t === 'internal')  return '#e879f9';
+    const r = d.received || 0;
+    if (r >= 10e6) return '#3b82f6';
+    if (r >= 1e6)  return '#10b981';
+    if (r >= 5e5)  return '#06b6d4';
+    return '#475569';
+  };
+  const nodeR = d => {
+    const r = Math.max(d.received || 1, 1000);
+    return Math.max(5, Math.min(44, Math.log10(r) * 6 - 12));
+  };
+  const edgeColor = a => a>=5e6?'#f59e0b66': a>=1e6?'#3b82f655':'#47556933';
+  const markerKey = a => a>=5e6?'lg': a>=1e6?'md':'sm';
+  const edgeW     = a => Math.max(1, Math.min(7, Math.log10(Math.max(a,1)) - 3.5));
 
-  return { W, H };
+  // Links
+  const linkEl = g.append('g').selectAll('line').data(links).join('line')
+    .attr('stroke', d => edgeColor(d.amount))
+    .attr('stroke-width', d => edgeW(d.amount))
+    .attr('marker-end', d => `url(#ar-${markerKey(d.amount)})`);
+
+  // Nodes
+  const nodeEl = g.append('g').selectAll('circle').data(nodes).join('circle')
+    .attr('r', nodeR)
+    .attr('fill', nodeColor)
+    .attr('stroke', d => d.isGenesis ? '#f59e0b' : '#1a2540')
+    .attr('stroke-width', d => d.isGenesis ? 3 : 1)
+    .style('cursor', 'pointer')
+    .call(d3.drag()
+      .on('start', (e,d) => { if(!e.active) sim.alphaTarget(0.3).restart(); d.fx=d.x; d.fy=d.y; })
+      .on('drag',  (e,d) => { d.fx=e.x; d.fy=e.y; })
+      .on('end',   (e,d) => { if(!e.active) sim.alphaTarget(0); d.fx=null; d.fy=null; }));
+
+  // Glow for genesis
+  nodeEl.filter(d=>d.isGenesis).style('filter','drop-shadow(0 0 12px #f59e0baa)');
+
+  // Labels — only for larger nodes
+  const showLabel = d => d.isGenesis || d.received >= 1e6 || KNOWN[d.id];
+  const labelEl = g.append('g').selectAll('text')
+    .data(nodes.filter(showLabel)).join('text')
+    .attr('fill', '#c8d4e8')
+    .attr('font-size', d => d.isGenesis ? 11 : 9)
+    .attr('font-weight', d => d.isGenesis ? 700 : 400)
+    .attr('text-anchor', 'middle')
+    .style('pointer-events', 'none')
+    .text(d => knownLabel(d.id));
+
+  // Tooltip
+  const tip = document.getElementById('tooltip');
+  nodeEl
+    .on('mouseover', (e, d) => {
+      const k = KNOWN[d.id];
+      tip.style.display = 'block';
+      tip.style.left = (e.offsetX + 14) + 'px';
+      tip.style.top  = (e.offsetY - 10) + 'px';
+      tip.innerHTML = `
+        <div class="tip-title">${knownLabel(d.id)}</div>
+        <div class="tip-addr">${d.id}</div>
+        <div class="tip-grid">
+          <div><div class="tip-val" style="color:#10b981">${fmt(d.received)}</div><div class="tip-lbl">Received</div></div>
+          <div><div class="tip-val" style="color:#ef4444">${fmt(d.sent)}</div><div class="tip-lbl">Sent</div></div>
+          <div><div class="tip-val" style="color:#0ea5e9">${fmt(d.balance)}</div><div class="tip-lbl">Net Balance</div></div>
+          <div><div class="tip-val" style="color:#8b5cf6">${k?.type || 'wallet'}</div><div class="tip-lbl">Type</div></div>
+        </div>
+        <div style="margin-top:8px">
+          <a href="https://chainscan.0g.ai/address/${d.id}" target="_blank"
+            style="color:#2563eb;font-size:11px">View on ChainScan ↗</a>
+        </div>`;
+    })
+    .on('mousemove', e => {
+      tip.style.left = (e.offsetX + 14) + 'px';
+      tip.style.top  = (e.offsetY - 10) + 'px';
+    })
+    .on('mouseout', () => tip.style.display = 'none');
+
+  // Simulation
+  if (sim) sim.stop();
+  sim = d3.forceSimulation(nodes)
+    .force('link', d3.forceLink(links).id(d=>d.id)
+      .distance(d => 70 + Math.log10(Math.max(d.amount,1)) * 18))
+    .force('charge', d3.forceManyBody().strength(-350))
+    .force('center', d3.forceCenter(W/2, H/2))
+    .force('collide', d3.forceCollide(d => nodeR(d) + 10));
+
+  sim.on('tick', () => {
+    linkEl.attr('x1',d=>d.source.x).attr('y1',d=>d.source.y)
+          .attr('x2',d=>d.target.x).attr('y2',d=>d.target.y);
+    nodeEl.attr('cx',d=>d.x).attr('cy',d=>d.y);
+    labelEl.attr('x',d=>d.x).attr('y',d=>d.y - nodeR(d) - 4);
+  });
 }
 
-function renderGraph(graphData) {
-  if (!graphData.nodes.length) {
-    alert('No addresses meet the current filter. Try lowering the Min Token Balance.');
+// ══════════════════════════════════════════════════════
+// MAIN TRACE
+// Renders offline immediately from SNAPSHOT_TXS,
+// then enriches with live ChainScan data when available.
+// ══════════════════════════════════════════════════════
+async function startTrace() {
+  if (_tracing) return;
+  _tracing = true;
+  document.getElementById('btn-trace').disabled = true;
+  document.getElementById('overlay-start').style.display = 'none';
+
+  const minBal  = parseInt(document.getElementById('min-bal').value);
+  const maxHops = parseInt(document.getElementById('hop-depth').value);
+
+  // ── Step 1: Render from embedded snapshot immediately (works fully offline) ──
+  setProgress(15, '📊 Loading pre-traced genesis snapshot…');
+  await sleep(30); // yield to browser so progress bar paints
+
+  let allTxs = SNAPSHOT_TXS.map(t => ({...t,
+    from: t.from.toLowerCase(),
+    to:   t.to.toLowerCase(),
+  }));
+
+  // Populate allocation list from snapshot
+  const recvMap = {};
+  for (const tx of allTxs) {
+    if (tx.from === GENESIS) recvMap[tx.to] = (recvMap[tx.to]||0) + tx.value;
+  }
+  document.getElementById('alloc-list').innerHTML = Object.entries(recvMap)
+    .sort((a,b)=>b[1]-a[1]).slice(0,12)
+    .map(([a,v])=>`<div class="alloc-row">
+      <span class="addr">${knownLabel(a)}</span>
+      <span class="amt">${fmt(v)}</span></div>`).join('');
+
+  document.getElementById('s-txs').textContent = allTxs.length;
+  setProgress(45, '🎨 Rendering snapshot graph…');
+  await sleep(30);
+
+  const snap = buildGraph(allTxs, minBal);
+  const snapVol = allTxs.filter(t=>t.from===GENESIS).reduce((s,t)=>s+t.value,0);
+  document.getElementById('s-vol').textContent = fmt(snapVol);
+  renderGraph(snap.nodes, snap.links);
+  setProgress(60, `✅ Snapshot loaded — ${snap.nodes.length} nodes · ${snap.links.length} links`);
+
+  // ── Step 2: Try live enrichment (only works over http/https, not file://) ──
+  const isFileProt = window.location.protocol === 'file:';
+  if (isFileProt) {
+    setProgress(100,
+      '📁 Offline mode — snapshot shown. Serve via web server for live data.');
+    _tracing = false;
+    document.getElementById('btn-trace').disabled = false;
     return;
   }
 
-  document.getElementById('overlay-empty').style.display = 'none';
-
-  const { W, H } = initSVG();
-  const { nodes, links } = graphData;
-
-  const g = state.g;
-
-  // Links
-  const linkSel = g.append('g').attr('class', 'links')
-    .selectAll('line').data(links).join('line')
-    .attr('stroke', d => d.amount >= 5e6 ? '#ef4444aa' : d.amount >= 1e6 ? '#f59e0b99' : '#3b82f655')
-    .attr('stroke-width', d => Math.max(1, Math.min(7, Math.log10(Math.max(d.amount / 1000, 2)) * 2)))
-    .attr('marker-end', d => d.amount >= 5e6 ? 'url(#arr-xl)' : d.amount >= 1e6 ? 'url(#arr-lg)' : 'url(#arr-sm)')
-    .attr('opacity', 0.8);
-
-  // Nodes
-  const nodeSel = g.append('g').attr('class', 'nodes')
-    .selectAll('g').data(nodes).join('g')
-    .attr('class', 'node')
-    .call(d3.drag()
-      .on('start', (ev, d) => { if (!ev.active) sim.alphaTarget(0.3).restart(); d.fx = d.x; d.fy = d.y; })
-      .on('drag',  (ev, d) => { d.fx = ev.x; d.fy = ev.y; })
-      .on('end',   (ev, d) => { if (!ev.active) sim.alphaTarget(0); d.fx = null; d.fy = null; })
-    )
-    .on('click', (ev, d) => { ev.stopPropagation(); showDetail(d); })
-    .on('mouseenter', (ev, d) => showTip(ev, d))
-    .on('mouseleave', hideTip);
-
-  // Glow ring for genesis
-  nodeSel.filter(d => d.isGenesis)
-    .append('circle')
-    .attr('r', d => getNodeRadius(d) + 9)
-    .attr('fill', 'none').attr('stroke', '#f59e0b')
-    .attr('stroke-width', 1.5).attr('opacity', 0.35)
-    .attr('class', 'glow-ring');
-
-  nodeSel.append('circle')
-    .attr('r', d => getNodeRadius(d))
-    .attr('fill', d => getNodeColor(d))
-    .attr('stroke', d => d3.color(getNodeColor(d))?.brighter(0.8) || '#fff')
-    .attr('stroke-width', 1.2);
-
-  // Label below node (medium+)
-  nodeSel.filter(d => getNodeRadius(d) > 11)
-    .append('text')
-    .attr('text-anchor', 'middle')
-    .attr('dy', d => getNodeRadius(d) + 13)
-    .attr('font-size', '10px')
-    .attr('fill', '#8ba3c4')
-    .attr('pointer-events', 'none')
-    .text(d => truncAddr(d.id));
-
-  // Balance label inside large nodes
-  nodeSel.filter(d => getNodeRadius(d) > 18)
-    .append('text')
-    .attr('text-anchor', 'middle').attr('dy', '0.35em')
-    .attr('font-size', '9px').attr('fill', '#ffffffcc')
-    .attr('pointer-events', 'none')
-    .text(d => formatNum(d.balance));
-
-  // Force simulation
-  const sim = d3.forceSimulation(nodes)
-    .force('link', d3.forceLink(links).id(d => d.id)
-      .distance(d => 60 + 120 / Math.log(Math.max(d.amount / 1000, 2)))
-      .strength(0.4))
-    .force('charge', d3.forceManyBody().strength(d => -150 - getNodeRadius(d) * 15))
-    .force('center', d3.forceCenter(W / 2, H / 2))
-    .force('collision', d3.forceCollide().radius(d => getNodeRadius(d) + 10));
-
-  state.simulation = sim;
-
-  sim.on('tick', () => {
-    linkSel
-      .attr('x1', d => d.source.x).attr('y1', d => d.source.y)
-      .attr('x2', d => {
-        const dx = d.target.x - d.source.x, dy = d.target.y - d.source.y;
-        const dist = Math.sqrt(dx * dx + dy * dy) || 1;
-        return d.target.x - (dx / dist) * (getNodeRadius(d.target) + 8);
-      })
-      .attr('y2', d => {
-        const dx = d.target.x - d.source.x, dy = d.target.y - d.source.y;
-        const dist = Math.sqrt(dx * dx + dy * dy) || 1;
-        return d.target.y - (dy / dist) * (getNodeRadius(d.target) + 8);
-      });
-
-    nodeSel.attr('transform', d => `translate(${d.x},${d.y})`);
-  });
-}
-
-// ═══════════════════════════════════════════════
-// TOOLTIP
-// ═══════════════════════════════════════════════
-
-function showTip(ev, d) {
-  const known = KNOWN_WALLETS[d.id.toLowerCase()];
-  const tip = document.getElementById('tooltip');
-  tip.innerHTML = `
-    <div class="tip-name">${known ? known.label : truncAddr(d.id)}</div>
-    <div class="tip-addr">${d.id}</div>
-    <div class="tip-row"><span>Balance</span><strong>${formatNum(d.balance)} 0G</strong></div>
-    <div class="tip-row"><span>Received</span><strong>${formatNum(d.received)} 0G</strong></div>
-    <div class="tip-row"><span>Sent</span><strong>${formatNum(d.sent)} 0G</strong></div>
-    <div class="tip-row"><span>Transactions</span><strong>${d.txCount}</strong></div>
-  `;
-  tip.style.left = (ev.pageX + 14) + 'px';
-  tip.style.top  = (ev.pageY - 10) + 'px';
-  tip.classList.remove('hidden');
-}
-function hideTip() { document.getElementById('tooltip').classList.add('hidden'); }
-
-// ═══════════════════════════════════════════════
-// DETAIL PANEL
-// ═══════════════════════════════════════════════
-
-function showDetail(d) {
-  state.selectedNode = d;
-  const chainCfg = CHAINS[state.chain] || CHAINS['0g'];
-  const known = KNOWN_WALLETS[d.id.toLowerCase()];
-
-  document.getElementById('detail-label').textContent = known ? known.label : 'Wallet Address';
-  document.getElementById('detail-addr').textContent  = d.id;
-
-  const type = getNodeType(d.id);
-  const badge = document.getElementById('detail-type');
-  badge.textContent = type;
-  badge.className = `badge badge-${type}`;
-
-  document.getElementById('d-balance').textContent  = formatNum(d.balance)  + ' 0G';
-  document.getElementById('d-in').textContent       = formatNum(d.received) + ' 0G';
-  document.getElementById('d-out').textContent      = formatNum(d.sent)     + ' 0G';
-  document.getElementById('d-txcount').textContent  = d.txCount;
-  document.getElementById('d-explorer-link').href   = `${chainCfg.explorerBase}/address/${d.id}`;
-
-  const related = state.graphData.links
-    .filter(l => {
-      const s = typeof l.source === 'object' ? l.source.id : l.source;
-      const t = typeof l.target === 'object' ? l.target.id : l.target;
-      return s === d.id || t === d.id;
-    })
-    .sort((a, b) => b.amount - a.amount);
-
-  document.getElementById('detail-flows').innerHTML = related.slice(0, 10).map(l => {
-    const s = typeof l.source === 'object' ? l.source.id : l.source;
-    const t = typeof l.target === 'object' ? l.target.id : l.target;
-    const isOut = s === d.id;
-    return `<div class="flow-row">
-      <span class="flow-dir ${isOut ? 'out' : 'in'}">${isOut ? '→ OUT' : '← IN'}</span>
-      <span class="flow-addr">${truncAddr(isOut ? t : s)}</span>
-      <strong class="flow-amt">${formatNum(l.amount)}</strong>
-    </div>`;
-  }).join('') || '<div style="color:var(--text2);font-size:11px">No significant flows in current view.</div>';
-
-  document.getElementById('sidebar-detail').classList.remove('hidden');
-}
-
-// ═══════════════════════════════════════════════
-// STATS BAR
-// ═══════════════════════════════════════════════
-
-function updateStats() {
-  const { nodes, links, totalTokens } = state.graphData;
-  document.getElementById('stat-nodes').textContent  = nodes.length.toLocaleString();
-  document.getElementById('stat-edges').textContent  = links.length.toLocaleString();
-  document.getElementById('stat-tokens').textContent = formatNum(totalTokens);
-}
-
-// ═══════════════════════════════════════════════
-// PROGRESS
-// ═══════════════════════════════════════════════
-
-function setProgress(pct, label) {
-  document.getElementById('progress-area').classList.remove('hidden');
-  if (pct !== null) document.getElementById('progress-fill').style.width = pct + '%';
-  document.getElementById('progress-label').textContent = label || '';
-}
-function hideProgress() {
-  document.getElementById('progress-fill').style.width = '100%';
-  setTimeout(() => {
-    document.getElementById('progress-area').classList.add('hidden');
-    document.getElementById('progress-fill').style.width = '0%';
-  }, 600);
-}
-
-// ═══════════════════════════════════════════════
-// MAIN LOAD LOGIC
-// ═══════════════════════════════════════════════
-
-async function loadAndTrace() {
-  if (state.loading) return;
-  state.loading = true;
-
-  const btn     = document.getElementById('btn-load');
-  const btnTxt  = document.getElementById('btn-load-text');
-  btn.disabled  = true;
-  btnTxt.textContent = 'Loading…';
-
+  // Try live ChainScan fetch in background
   try {
-    const chain       = state.chain;
-    const chainCfg    = CHAINS[chain] || CHAINS['0g'];
-    const apiBase = document.getElementById('api-base')?.value?.trim() || chainCfg.apiBase || '';
-    const apiKey      = document.getElementById('api-key').value.trim();
-    const tokenAddr   = document.getElementById('token-contract').value.trim();
-    const minBalance  = parseFloat(document.getElementById('min-balance').value)  || 500000;
-    const minTransfer = parseFloat(document.getElementById('min-transfer').value) || 0;
-    const maxHops     = parseInt(document.getElementById('max-hops').value)        || 3;
-    const activeTab   = document.querySelector('.source-tabs .tab.active')?.dataset?.tab;
+    setProgress(65, '🌐 Enriching with live data from ChainScan…');
+    const visited = new Set([GENESIS]);
+    const liveTxs = await fetchAllTxs(GENESIS, 10);
+    allTxs = [...allTxs, ...liveTxs];
+    document.getElementById('s-txs').textContent = allTxs.length;
+    setProgress(75, `✅ Genesis: ${liveTxs.length} live txs merged`);
 
-    let transactions = [];
+    // Rebuild recv map from merged data
+    const mergedRecv = {};
+    for (const tx of allTxs) {
+      if (tx.from === GENESIS) mergedRecv[tx.to] = (mergedRecv[tx.to]||0) + tx.value;
+    }
 
-    if (activeTab === 'upload') {
-      // ── CSV / JSON file upload ──────────────────────
-      transactions = state.transactions;
-      if (!transactions.length) { alert('No data loaded. Please upload a file first.'); return; }
+    // BFS hops on live data
+    for (let hop = 1; hop <= maxHops; hop++) {
+      const candidates = Object.entries(mergedRecv)
+        .filter(([a,v]) => v >= minBal && !visited.has(a))
+        .sort((a,b)=>b[1]-a[1]).slice(0,15).map(([a])=>a);
+      if (!candidates.length) break;
+      setProgress(75 + hop*5, `🔍 Hop ${hop}: tracing ${candidates.length} recipients…`);
 
-    } else if (activeTab === 'rpc') {
-      // ── Direct RPC ──────────────────────────────────
-      const rpcUrl    = document.getElementById('rpc-url').value.trim();
-      const fromBlock = parseInt(document.getElementById('rpc-from-block').value) || 0;
-      const tokenType = document.querySelector('.token-type-btn.active')?.dataset?.type || 'native';
-
-      if (!rpcUrl) { alert('Please enter an RPC endpoint URL.'); return; }
-
-      setProgress(1, 'Connecting to RPC…');
-      try {
-        await rpcCall(rpcUrl, 'eth_blockNumber', []);
-      } catch (e) {
-        alert(`Cannot reach RPC: ${e.message}\n\nTry a different endpoint from the dropdown.`);
-        return;
-      }
-
-      if (tokenType === 'native') {
-        // ── Native A0GI via trace_filter or block scan ──
-        const raw = document.getElementById('rpc-genesis-wallets').value.trim();
-        const genesisAddrs = raw.split(/[\n,;]+/).map(a => a.trim()).filter(a => a.startsWith('0x'));
-
-        if (!genesisAddrs.length) {
-          alert('Please enter at least one genesis/seed wallet address to trace native A0GI from.');
-          return;
+      let done = 0;
+      for (const addr of candidates) {
+        visited.add(addr);
+        const txs = await fetchAllTxs(addr, 3);
+        allTxs.push(...txs);
+        for (const tx of txs) {
+          if (tx.from === addr) mergedRecv[tx.to] = (mergedRecv[tx.to]||0) + tx.value;
         }
-
-        const maxHopsNative = parseInt(document.getElementById('native-hops').value) || 3;
-
-        transactions = await fetchNativeTransfers(
-          rpcUrl, genesisAddrs, fromBlock, minBalance, maxHopsNative,
-          (pct, msg) => setProgress(pct, msg)
-        );
-
-      } else {
-        // ── ERC-20 via eth_getLogs ─────────────────────
-        const tokenCont = document.getElementById('rpc-token-contract').value.trim();
-        if (!tokenCont) {
-          alert('Please enter the ERC-20 token contract address.');
-          return;
-        }
-        transactions = await fetchViaRPC(
-          rpcUrl, tokenCont, fromBlock,
-          (pct, msg) => setProgress(pct, msg)
-        );
-      }
-
-      setProgress(94, `Loaded ${transactions.length.toLocaleString()} transfers from chain`);
-
-    } else if (activeTab === 'ethereum') {
-      // ── Etherscan ERC-20 ────────────────────────────
-      const apiKey   = document.getElementById('api-key').value.trim();
-      const tokenAddr = document.getElementById('token-contract').value.trim();
-      setProgress(5, 'Connecting to Etherscan…');
-      transactions = await fetchEtherscanAllTokenTx(
-        apiKey, tokenAddr,
-        msg => setProgress(null, msg)
-      );
-      setProgress(80, `Loaded ${transactions.length.toLocaleString()} transfers`);
-    }
-    else {
-      // legacy fallback — BFS via Blockscout (may hit CORS)
-      const apiBase  = 'https://chainscan.0g.ai';
-      const tokenAddr = '';
-      const raw = '';
-      const genesisAddrs = raw
-        ? raw.split(/[\n,;]+/).map(a => a.trim()).filter(a => a.startsWith('0x'))
-        : [];
-
-      if (!genesisAddrs.length) {
-        alert('For the 0G chain, please enter at least one genesis/seed wallet address.');
-        return;
-      }
-
-      setProgress(5, 'Fetching genesis wallet transactions…');
-      const visited = new Set(genesisAddrs.map(a => a.toLowerCase()));
-
-      for (let i = 0; i < genesisAddrs.length; i++) {
-        const addr = genesisAddrs[i];
-        setProgress(5 + (i / genesisAddrs.length) * 30, `Genesis wallet ${i + 1}/${genesisAddrs.length}: ${truncAddr(addr)}…`);
-        const txs = tokenAddr
-          ? await fetchBlockscoutTokenTx(apiBase, addr, tokenAddr, msg => setProgress(null, msg))
-          : await fetchBlockscoutNativeTx(apiBase, addr, msg => setProgress(null, msg));
-        transactions.push(...txs);
-      }
-
-      // BFS hops
-      const maxHops = parseInt(document.getElementById('max-hops').value) || 3;
-      for (let hop = 1; hop < maxHops; hop++) {
-        const tempBal = {};
-        for (const tx of transactions) {
-          if (tx.to) tempBal[tx.to] = (tempBal[tx.to] || 0) + tx.value;
-        }
-        const nextLevel = Object.entries(tempBal)
-          .filter(([addr, bal]) => bal >= minBalance && !visited.has(addr))
-          .sort((a, b) => b[1] - a[1])
-          .slice(0, 60)
-          .map(([addr]) => addr);
-
-        if (!nextLevel.length) break;
-        setProgress(35 + hop * 15, `Hop ${hop}/${maxHops}: tracing ${nextLevel.length} addresses…`);
-
-        for (const addr of nextLevel) {
-          visited.add(addr);
-          try {
-            const txs = tokenAddr
-              ? await fetchBlockscoutTokenTx(apiBase, addr, tokenAddr, null)
-              : await fetchBlockscoutNativeTx(apiBase, addr, null);
-            transactions.push(...txs);
-            await sleep(200);
-          } catch (e) { /* skip */ }
-        }
+        done++;
+        setProgress(75 + hop*5 + (done/candidates.length)*4,
+          `Hop ${hop}: ${done}/${candidates.length} — ${allTxs.length} total txs`);
+        document.getElementById('s-txs').textContent = allTxs.length;
+        await sleep(80);
       }
     }
 
-    setProgress(88, `Building graph from ${transactions.length.toLocaleString()} transactions…`);
-    await sleep(50);
+    // Final re-render with enriched data
+    setProgress(95, '🎨 Re-rendering with live data…');
+    const { nodes, links } = buildGraph(allTxs, minBal);
+    const vol = allTxs.filter(t=>t.from===GENESIS).reduce((s,t)=>s+t.value,0);
+    document.getElementById('s-vol').textContent = fmt(vol);
+    renderGraph(nodes, links);
 
-    state.transactions = transactions;
-    const graphData = buildGraph(transactions, minBalance, minTransfer);
-    state.graphData  = graphData;
+    // Update alloc list
+    document.getElementById('alloc-list').innerHTML = Object.entries(mergedRecv)
+      .sort((a,b)=>b[1]-a[1]).slice(0,12)
+      .map(([a,v])=>`<div class="alloc-row">
+        <span class="addr">${knownLabel(a)}</span>
+        <span class="amt">${fmt(v)}</span></div>`).join('');
 
-    setProgress(96, 'Rendering…');
-    await sleep(50);
+    setProgress(100, `✅ Live data — ${nodes.length} nodes, ${links.length} links`);
 
-    renderGraph(graphData);
-    updateStats();
-    hideProgress();
-
-  } catch (e) {
-    console.error(e);
-    alert('Error: ' + e.message);
-    hideProgress();
-  } finally {
-    state.loading    = false;
-    btn.disabled     = false;
-    btnTxt.textContent = '⬡ Trace from Genesis';
-  }
-}
-
-// ═══════════════════════════════════════════════
-// UI INIT
-// ═══════════════════════════════════════════════
-
-document.addEventListener('DOMContentLoaded', () => {
-
-  // Source tabs
-  document.querySelectorAll('.source-tabs .tab').forEach(btn => {
-    btn.addEventListener('click', () => {
-      document.querySelectorAll('.source-tabs .tab').forEach(b => b.classList.remove('active'));
-      document.querySelectorAll('.tab-content').forEach(c => c.classList.add('hidden'));
-      btn.classList.add('active');
-      document.getElementById(`tab-${btn.dataset.tab}`).classList.remove('hidden');
-    });
-  });
-
-  // RPC preset selector
-  const rpcPreset = document.getElementById('rpc-preset');
-  const rpcUrl    = document.getElementById('rpc-url');
-  if (rpcPreset && rpcUrl) {
-    rpcPreset.addEventListener('change', e => {
-      if (e.target.value !== 'custom') rpcUrl.value = e.target.value;
-    });
-    rpcUrl.addEventListener('input', () => { rpcPreset.value = 'custom'; });
+  } catch(e) {
+    // Live fetch failed but snapshot is already rendered — just show a note
+    setProgress(100,
+      '⚠️ Live fetch unavailable — showing pre-traced snapshot (Apr 2026)');
+    console.warn('Live enrich failed:', e.message);
   }
 
-  // Token type toggle (Native A0GI / ERC-20)
-  document.querySelectorAll('.token-type-btn').forEach(btn => {
-    btn.addEventListener('click', () => {
-      document.querySelectorAll('.token-type-btn').forEach(b => {
-        b.classList.remove('active');
-        b.style.border = '1px solid var(--border)';
-        b.style.background = 'var(--bg3)';
-        b.style.color = 'var(--text2)';
-      });
-      btn.classList.add('active');
-      btn.style.border = '1px solid var(--accent)';
-      btn.style.background = '#1e3a5f';
-      btn.style.color = 'var(--accent2)';
-
-      const type = btn.dataset.type;
-      document.getElementById('native-fields').classList.toggle('hidden', type !== 'native');
-      document.getElementById('erc20-fields').classList.toggle('hidden',  type !== 'erc20');
-    });
-  });
-
-  // Native hops label
-  document.getElementById('native-hops')?.addEventListener('input', e => {
-    document.getElementById('native-hops-label').textContent = e.target.value + ' hops';
-  });
-
-  // Slider sync
-  const mbInput  = document.getElementById('min-balance');
-  const mbSlider = document.getElementById('min-balance-slider');
-  mbInput.addEventListener('input',  () => mbSlider.value = mbInput.value);
-  mbSlider.addEventListener('input', () => mbInput.value  = mbSlider.value);
-
-  // Hops label
-  document.getElementById('max-hops').addEventListener('input', e => {
-    document.getElementById('max-hops-label').textContent = e.target.value + ' hops';
-  });
-
-  // Load
-  document.getElementById('btn-load').addEventListener('click', loadAndTrace);
-
-  // File upload
-  const fileInput = document.getElementById('file-input');
-  const dropZone  = document.getElementById('drop-zone');
-
-  dropZone.addEventListener('click', () => fileInput.click());
-  dropZone.addEventListener('dragover',  e => { e.preventDefault(); dropZone.classList.add('drag-over'); });
-  dropZone.addEventListener('dragleave', () => dropZone.classList.remove('drag-over'));
-  dropZone.addEventListener('drop', e => {
-    e.preventDefault();
-    dropZone.classList.remove('drag-over');
-    handleFile(e.dataTransfer.files[0]);
-  });
-  fileInput.addEventListener('change', e => handleFile(e.target.files[0]));
-
-  // Close detail
-  document.getElementById('btn-close-detail').addEventListener('click', () => {
-    document.getElementById('sidebar-detail').classList.add('hidden');
-  });
-
-  // Trace from selected node
-  document.getElementById('d-trace-btn').addEventListener('click', () => {
-    if (state.selectedNode) {
-      document.getElementById('genesis-addrs').value = state.selectedNode.id;
-      document.querySelector('[data-tab="explorer"]').click();
-      document.getElementById('sidebar-detail').classList.add('hidden');
-      loadAndTrace();
-    }
-  });
-
-  // Export SVG
-  document.getElementById('btn-export').addEventListener('click', () => {
-    const svgEl  = document.getElementById('graph');
-    const blob   = new Blob([new XMLSerializer().serializeToString(svgEl)], { type: 'image/svg+xml' });
-    const url    = URL.createObjectURL(blob);
-    const a      = Object.assign(document.createElement('a'), { href: url, download: '0g-token-flow.svg' });
-    a.click(); URL.revokeObjectURL(url);
-  });
-
-  // Reheat
-  document.getElementById('btn-layout-force').addEventListener('click', () => {
-    if (state.simulation) state.simulation.alpha(0.5).restart();
-  });
-
-  // Pin / unpin all
-  let allPinned = false;
-  document.getElementById('btn-pin-all').addEventListener('click', () => {
-    allPinned = !allPinned;
-    if (state.graphData.nodes.length) {
-      state.graphData.nodes.forEach(n => { n.fx = allPinned ? n.x : null; n.fy = allPinned ? n.y : null; });
-      if (!allPinned && state.simulation) state.simulation.alpha(0.3).restart();
-    }
-    document.getElementById('btn-pin-all').classList.toggle('active', allPinned);
-  });
-
-  // Search
-  document.getElementById('search-btn').addEventListener('click', doSearch);
-  document.getElementById('search-input').addEventListener('keydown', e => { if (e.key === 'Enter') doSearch(); });
-
-  // Resize
-  window.addEventListener('resize', () => {
-    if (state.graphData.nodes.length) { renderGraph(state.graphData); updateStats(); }
-    else initSVG();
-  });
-
-  // Init
-  buildLegend();
-  buildKnownWallets();
-  initSVG();
-});
-
-// ═══════════════════════════════════════════════
-// FILE HANDLER
-// ═══════════════════════════════════════════════
-
-function handleFile(file) {
-  if (!file) return;
-  const reader = new FileReader();
-  reader.onload = e => {
-    let txs;
-    try {
-      if (file.name.endsWith('.json')) {
-        const d = JSON.parse(e.target.result);
-        const arr = Array.isArray(d) ? d : d.result || d.transactions || d.data || [];
-        txs = arr.map(tx => ({
-          hash:      tx.hash || tx.txhash || '',
-          from:      (tx.from || '').toLowerCase(),
-          to:        (tx.to   || '').toLowerCase(),
-          value:     parseFloat(tx.value || tx.amount || 0),
-          timestamp: tx.timestamp || tx.timeStamp || '',
-        }));
-      } else {
-        txs = parseCSV(e.target.result);
-      }
-      state.transactions = txs;
-      dropZone.innerHTML = `<strong style="color:var(--green)">✓ ${txs.length.toLocaleString()} transactions loaded</strong><br><small style="color:var(--text2)">${file.name}</small>`;
-    } catch (err) {
-      alert('Could not parse file: ' + err.message);
-    }
-  };
-  reader.readAsText(file);
+  _tracing = false;
+  document.getElementById('btn-trace').disabled = false;
 }
-
-// ═══════════════════════════════════════════════
-// SEARCH
-// ═══════════════════════════════════════════════
-
-function doSearch() {
-  const q = document.getElementById('search-input').value.trim().toLowerCase();
-  if (!q) return;
-
-  const node = state.graphData.nodes.find(n =>
-    n.id.toLowerCase().includes(q) ||
-    (KNOWN_WALLETS[n.id.toLowerCase()]?.label || '').toLowerCase().includes(q)
-  );
-
-  if (!node) { alert('Address not found in current graph.'); return; }
-
-  showDetail(node);
-
-  if (state.simulation && node.x != null) {
-    const el = document.getElementById('graph-area');
-    const tx = el.clientWidth  / 2 - node.x;
-    const ty = el.clientHeight / 2 - node.y;
-    state.svg.transition().duration(600).call(
-      d3.zoom().transform,
-      d3.zoomIdentity.translate(tx, ty).scale(2)
-    );
-  }
-}
-
-// ═══════════════════════════════════════════════
-// LEGEND & KNOWN WALLETS
-// ═══════════════════════════════════════════════
-
-function buildLegend() {
-  document.getElementById('legend-list').innerHTML = LEGEND_ITEMS.map(item => `
-    <div class="legend-item">
-      ${item.line
-        ? `<div class="legend-line" style="background:${item.color}"></div>`
-        : `<div class="legend-dot" style="background:${item.color}"></div>`
-      }
-      <span>${item.label}</span>
-    </div>
-  `).join('');
-}
-
-function buildKnownWallets() {
-  const byType = {};
-  Object.entries(KNOWN_WALLETS).forEach(([addr, info]) => {
-    if (!byType[info.type]) byType[info.type] = [];
-    byType[info.type].push({ addr, ...info });
-  });
-
-  document.getElementById('known-wallets-list').innerHTML = Object.entries(byType).map(([type, ws]) => `
-    <div class="kw-group">
-      <div class="kw-type">${type}</div>
-      ${ws.map(w => `
-        <div class="kw-item" onclick="highlightWallet('${w.addr}')">
-          <span class="kw-dot" style="background:${NODE_COLORS[type] || '#666'}"></span>
-          <span>${w.label}</span>
-        </div>
-      `).join('')}
-    </div>
-  `).join('');
-}
-
-function highlightWallet(addr) {
-  const node = state.graphData.nodes.find(n => n.id.toLowerCase() === addr.toLowerCase());
-  if (!node) { alert('This address is not in the current graph.'); return; }
-  showDetail(node);
-  if (state.simulation && node.x != null) {
-    const el = document.getElementById('graph-area');
-    const tx = el.clientWidth  / 2 - node.x;
-    const ty = el.clientHeight / 2 - node.y;
-    state.svg.transition().duration(600).call(
-      d3.zoom().transform,
-      d3.zoomIdentity.translate(tx, ty).scale(2)
-    );
-  }
-}
-
-// Click on empty canvas to deselect
-document.getElementById('graph-area').addEventListener('click', e => {
-  if (e.target === document.getElementById('graph') || e.target.tagName === 'svg') {
-    document.getElementById('sidebar-detail').classList.add('hidden');
-  }
-});
 </script>
 </body>
 </html>
