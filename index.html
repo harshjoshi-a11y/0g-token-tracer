@@ -177,6 +177,34 @@ svg { width: 100%; height: 100%; display: block; }
 }
 .shake { animation: shake 0.4s ease; }
 
+/* ── Label manager ──────────────────────────────────── */
+#lbl-section { border-top: 1px solid #1e2d4a; padding-top: 10px; }
+#lbl-toggle {
+  display: flex; justify-content: space-between; align-items: center;
+  cursor: pointer; user-select: none;
+}
+#lbl-toggle:hover h3 { color: #c8d4e8; }
+#lbl-caret { color: #6b8099; font-size: 10px; }
+#lbl-body { display: none; flex-direction: column; gap: 6px; margin-top: 8px; }
+#lbl-form input, #lbl-form select {
+  width: 100%; background: #0d1526; color: #c8d4e8;
+  border: 1px solid #1e2d4a; border-radius: 6px;
+  padding: 5px 8px; font-size: 12px;
+}
+#lbl-form input:focus, #lbl-form select:focus { outline: none; border-color: #2563eb88; }
+.lbl-entry {
+  display: flex; align-items: center; gap: 5px; font-size: 11px;
+  padding: 4px 6px; background: #0d1526; border-radius: 5px;
+}
+.lbl-entry .le-name { color: #e2eaf6; flex-shrink: 0; max-width: 80px;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.lbl-entry .le-addr { font-family: monospace; color: #6b8099; flex: 1;
+  font-size: 10px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.lbl-entry .le-del { cursor: pointer; color: #ef444466; font-size: 13px; flex-shrink: 0; }
+.lbl-entry .le-del:hover { color: #ef4444; }
+.lbl-saving { font-size: 10px; color: #f59e0b; min-height: 14px; }
+.type-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+
 </style>
 </head>
 <body>
@@ -264,6 +292,32 @@ svg { width: 100%; height: 100%; display: block; }
     <h3>Top Allocations</h3>
     <div id="alloc-list"><div style="color:#475569">Run trace to see allocations</div></div>
 
+    <!-- ── Wallet Labels ──────────────────────────────── -->
+    <div id="lbl-section">
+      <div id="lbl-toggle" onclick="toggleLblPanel()">
+        <h3>Wallet Labels</h3>
+        <span id="lbl-caret">▶</span>
+      </div>
+      <div id="lbl-body">
+        <div id="lbl-form" style="display:flex;flex-direction:column;gap:5px">
+          <input id="lbl-addr" placeholder="0x… address" spellcheck="false">
+          <input id="lbl-name" placeholder="Label (e.g. Binance Hot)">
+          <select id="lbl-type">
+            <option value="whale">🐋 Whale</option>
+            <option value="large">🟢 Large</option>
+            <option value="medium">🔵 Medium</option>
+            <option value="exchange">🏦 Exchange</option>
+            <option value="internal">🏠 Internal Wallet</option>
+            <option value="contract">🔷 Contract</option>
+            <option value="genesis">⭐ Genesis</option>
+          </select>
+          <button class="btn btn-sm" onclick="addLabel()" style="background:#10b981">+ Add Label</button>
+        </div>
+        <div class="lbl-saving" id="lbl-status"></div>
+        <div id="lbl-list" style="display:flex;flex-direction:column;gap:3px;max-height:180px;overflow-y:auto"></div>
+      </div>
+    </div>
+
     <div style="margin-top:auto;font-size:10px;color:#475569;line-height:1.5">
       Snapshot: Apr 19 2026<br>
       Genesis: Sep 22 2025<br>
@@ -346,6 +400,111 @@ function togglePassEye(el) {
 
 
 // ══════════════════════════════════════════════════════
+// WALLET LABELS — backed by labels.json in GitHub repo
+// Labels added here are shared with everyone on the site.
+// ══════════════════════════════════════════════════════
+const GH_TOKEN = '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';
+const GH_REPO  = 'harshjoshi-a11y/0g-token-tracer';
+const GH_FILE  = 'labels.json';
+const GH_RAW   = `https://raw.githubusercontent.com/${GH_REPO}/main/${GH_FILE}`;
+const GH_API   = `https://api.github.com/repos/${GH_REPO}/contents/${GH_FILE}`;
+
+let LABELS = {}; // loaded from labels.json — addr → { label, type }
+
+async function loadLabels() {
+  try {
+    const r = await fetch(GH_RAW + '?t=' + Date.now());
+    if (r.ok) LABELS = await r.json();
+    renderLabelList();
+  } catch(e) { console.warn('Labels load failed:', e.message); }
+}
+
+async function saveLabels(statusMsg) {
+  const status = document.getElementById('lbl-status');
+  if (status) status.textContent = '⏳ Saving…';
+  try {
+    // Get current SHA (required by GitHub API to update a file)
+    const meta = await fetch(GH_API, {
+      headers: { Authorization: `token ${GH_TOKEN}`, Accept: 'application/vnd.github.v3+json' }
+    });
+    const { sha } = await meta.json();
+
+    // Encode content and push
+    const content = btoa(unescape(encodeURIComponent(JSON.stringify(LABELS, null, 2))));
+    const res = await fetch(GH_API, {
+      method: 'PUT',
+      headers: {
+        Authorization: `token ${GH_TOKEN}`,
+        Accept: 'application/vnd.github.v3+json',
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ message: statusMsg || 'Update wallet labels', content, sha }),
+    });
+    if (!res.ok) throw new Error((await res.json()).message || res.status);
+    if (status) { status.textContent = '✅ Saved'; setTimeout(() => status.textContent = '', 2500); }
+  } catch(e) {
+    if (status) status.textContent = '❌ ' + e.message;
+    console.error('Labels save failed:', e);
+  }
+}
+
+function addLabel() {
+  const addr  = document.getElementById('lbl-addr').value.trim().toLowerCase();
+  const label = document.getElementById('lbl-name').value.trim();
+  const type  = document.getElementById('lbl-type').value;
+  if (!/^0x[0-9a-f]{40}$/.test(addr)) { alert('Enter a valid 0x address (42 chars)'); return; }
+  if (!label) { alert('Enter a label name'); return; }
+  LABELS[addr] = { label, type };
+  renderLabelList();
+  saveLabels(`Label added: ${label}`);
+  document.getElementById('lbl-addr').value = '';
+  document.getElementById('lbl-name').value = '';
+  // Re-render graph with new label if one is already showing
+  if (window._lastNodes && window._lastLinks) renderGraph(window._lastNodes, window._lastLinks);
+}
+
+function deleteLabel(addr) {
+  const name = LABELS[addr]?.label || addr;
+  delete LABELS[addr];
+  renderLabelList();
+  saveLabels(`Label removed: ${name}`);
+  if (window._lastNodes && window._lastLinks) renderGraph(window._lastNodes, window._lastLinks);
+}
+
+const TYPE_COLOR = {
+  genesis:'#f59e0b', whale:'#3b82f6', large:'#10b981',
+  medium:'#06b6d4', exchange:'#f97316', internal:'#e879f9', contract:'#8b5cf6'
+};
+
+function renderLabelList() {
+  const list = document.getElementById('lbl-list');
+  if (!list) return;
+  const entries = Object.entries(LABELS);
+  if (!entries.length) {
+    list.innerHTML = '<div style="color:#475569;font-size:11px;padding:4px 0">No labels yet</div>';
+    return;
+  }
+  list.innerHTML = entries.map(([addr, {label, type}]) => `
+    <div class="lbl-entry">
+      <div class="type-dot" style="background:${TYPE_COLOR[type]||'#475569'}"></div>
+      <span class="le-name" title="${label}">${label}</span>
+      <span class="le-addr" title="${addr}">${addr.slice(0,6)}…${addr.slice(-4)}</span>
+      <span class="le-del" onclick="deleteLabel('${addr}')" title="Remove">✕</span>
+    </div>`).join('');
+}
+
+function toggleLblPanel() {
+  const body  = document.getElementById('lbl-body');
+  const caret = document.getElementById('lbl-caret');
+  const open  = body.style.display === 'flex';
+  body.style.display = open ? 'none' : 'flex';
+  caret.textContent  = open ? '▶' : '▼';
+}
+
+// Load labels on startup (after password cleared)
+loadLabels();
+
+// ══════════════════════════════════════════════════════
 // CONFIG
 // ══════════════════════════════════════════════════════
 const GENESIS  = '0x711b0ecb072c27de0e50c9944d7195a51b202522';
@@ -402,12 +561,13 @@ const KNOWN = {
 };
 
 function knownLabel(addr) {
-  const k = KNOWN[(addr||'').toLowerCase()];
-  return k ? k.label : (addr.slice(0,6)+'…'+addr.slice(-4));
+  const a = (addr||'').toLowerCase();
+  return LABELS[a]?.label || KNOWN[a]?.label || (addr.slice(0,6)+'…'+addr.slice(-4));
 }
 
 function resolvedType(addr) {
-  return KNOWN[(addr||'').toLowerCase()]?.type || null;
+  const a = (addr||'').toLowerCase();
+  return LABELS[a]?.type || KNOWN[a]?.type || null;
 }
 function fmt(n) {
   if (!n || isNaN(n)) return '—';
