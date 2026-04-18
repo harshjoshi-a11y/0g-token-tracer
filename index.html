@@ -177,46 +177,6 @@ svg { width: 100%; height: 100%; display: block; }
 }
 .shake { animation: shake 0.4s ease; }
 
-/* ── Label manager ──────────────────────────────────── */
-#lbl-section { border-top: 1px solid #1e2d4a; padding-top: 10px; }
-#lbl-toggle {
-  display: flex; justify-content: space-between; align-items: center;
-  cursor: pointer; user-select: none;
-}
-#lbl-toggle:hover h3 { color: #c8d4e8; }
-#lbl-toggle .caret { color: #6b8099; font-size: 10px; transition: transform 0.2s; }
-#lbl-body { display: none; margin-top: 8px; display: flex; flex-direction: column; gap: 6px; }
-#lbl-form input, #lbl-form select {
-  width: 100%; background: #0d1526; color: #c8d4e8;
-  border: 1px solid #1e2d4a; border-radius: 6px;
-  padding: 5px 8px; font-size: 12px;
-}
-#lbl-form input:focus, #lbl-form select:focus { outline: none; border-color: #2563eb88; }
-.lbl-entry {
-  display: flex; align-items: center; gap: 5px;
-  font-size: 11px; padding: 4px 6px;
-  background: #0d1526; border-radius: 5px; border: 1px solid #1e2d4a22;
-}
-.lbl-entry .le-addr { font-family: monospace; color: #6b8099; flex: 1; min-width: 0;
-  white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-size: 10px; }
-.lbl-entry .le-name { color: #e2eaf6; font-size: 11px; flex-shrink: 0; max-width: 80px;
-  overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.lbl-entry .le-del {
-  cursor: pointer; color: #ef444488; flex-shrink: 0;
-  font-size: 13px; line-height: 1; padding: 0 2px;
-}
-.lbl-entry .le-del:hover { color: #ef4444; }
-.type-badge {
-  flex-shrink: 0; font-size: 9px; font-weight: 700; padding: 1px 5px;
-  border-radius: 4px; text-transform: uppercase; letter-spacing: 0.04em;
-}
-.tb-genesis  { background: #f59e0b22; color: #f59e0b; }
-.tb-whale    { background: #3b82f622; color: #3b82f6; }
-.tb-large    { background: #10b98122; color: #10b981; }
-.tb-medium   { background: #06b6d422; color: #06b6d4; }
-.tb-contract { background: #8b5cf622; color: #8b5cf6; }
-.tb-exchange  { background: #f97316aa; color: #fff; }
-.tb-internal  { background: #e879f922; color: #e879f9; }
 </style>
 </head>
 <body>
@@ -304,34 +264,6 @@ svg { width: 100%; height: 100%; display: block; }
     <h3>Top Allocations</h3>
     <div id="alloc-list"><div style="color:#475569">Run trace to see allocations</div></div>
 
-    <!-- ── Wallet Label Manager ─────────────────────── -->
-    <div id="lbl-section">
-      <div id="lbl-toggle" onclick="toggleLblPanel()">
-        <h3>Wallet Labels</h3>
-        <span class="caret" id="lbl-caret">▶</span>
-      </div>
-      <div id="lbl-body">
-        <div id="lbl-form" style="display:flex;flex-direction:column;gap:5px">
-          <input id="lbl-addr" placeholder="0x… address" spellcheck="false">
-          <input id="lbl-name" placeholder="Label (e.g. Binance Hot)">
-          <select id="lbl-type">
-            <option value="whale">🐋 Whale</option>
-            <option value="large">🟢 Large</option>
-            <option value="medium">🔵 Medium</option>
-            <option value="exchange">🏦 Exchange</option>
-            <option value="contract">🔷 Contract</option>
-            <option value="internal">🏠 Internal Wallet</option>
-            <option value="genesis">⭐ Genesis</option>
-          </select>
-          <button class="btn btn-sm" onclick="addCustomLabel()"
-            style="background:#10b981">+ Add Label</button>
-        </div>
-        <div id="lbl-list" style="margin-top:4px;display:flex;flex-direction:column;gap:3px;max-height:160px;overflow-y:auto"></div>
-        <button class="btn btn-sm" onclick="applyLabels()"
-          style="background:#2563eb;margin-top:4px">↺ Apply to Graph</button>
-      </div>
-    </div>
-
     <div style="margin-top:auto;font-size:10px;color:#475569;line-height:1.5">
       Snapshot: Apr 19 2026<br>
       Genesis: Sep 22 2025<br>
@@ -412,94 +344,6 @@ function togglePassEye(el) {
   }, 100);
 })();
 
-// ══════════════════════════════════════════════════════
-// CUSTOM LABELS  (persisted to localStorage)
-// ══════════════════════════════════════════════════════
-const LS_KEY = '0g-custom-labels';
-let CUSTOM_LABELS = {}; // addr.toLowerCase() → { label, type }
-
-function loadCustomLabels() {
-  try {
-    const raw = localStorage.getItem(LS_KEY);
-    if (raw) CUSTOM_LABELS = JSON.parse(raw);
-  } catch(_) { CUSTOM_LABELS = {}; }
-}
-
-function saveCustomLabels() {
-  try { localStorage.setItem(LS_KEY, JSON.stringify(CUSTOM_LABELS)); } catch(_) {}
-}
-
-function addCustomLabel() {
-  const addr  = document.getElementById('lbl-addr').value.trim().toLowerCase();
-  const label = document.getElementById('lbl-name').value.trim();
-  const type  = document.getElementById('lbl-type').value;
-  if (!addr.match(/^0x[0-9a-f]{40}$/i)) {
-    alert('Enter a valid 0x Ethereum address (42 chars)'); return;
-  }
-  if (!label) { alert('Enter a label name'); return; }
-  CUSTOM_LABELS[addr] = { label, type };
-  saveCustomLabels();
-  renderLabelList();
-  document.getElementById('lbl-addr').value = '';
-  document.getElementById('lbl-name').value = '';
-}
-
-function deleteCustomLabel(addr) {
-  delete CUSTOM_LABELS[addr];
-  saveCustomLabels();
-  renderLabelList();
-}
-
-const TYPE_CLASS = {
-  genesis:'tb-genesis', whale:'tb-whale', large:'tb-large',
-  medium:'tb-medium', contract:'tb-contract', exchange:'tb-exchange', internal:'tb-internal'
-};
-const TYPE_ICON = {
-  genesis:'⭐', whale:'🐋', large:'🟢', medium:'🔵', contract:'🔷', exchange:'🏦', internal:'🏠'
-};
-
-function renderLabelList() {
-  const list = document.getElementById('lbl-list');
-  const entries = Object.entries(CUSTOM_LABELS);
-  if (!entries.length) {
-    list.innerHTML = '<div style="color:#475569;font-size:11px">No custom labels yet</div>';
-    return;
-  }
-  list.innerHTML = entries.map(([addr, {label, type}]) => `
-    <div class="lbl-entry">
-      <span class="type-badge ${TYPE_CLASS[type]||'tb-medium'}">${TYPE_ICON[type]||'·'} ${type}</span>
-      <span class="le-name" title="${label}">${label}</span>
-      <span class="le-addr" title="${addr}">${addr.slice(0,6)}…${addr.slice(-4)}</span>
-      <span class="le-del" onclick="deleteCustomLabel('${addr}')" title="Remove">✕</span>
-    </div>`).join('');
-}
-
-function toggleLblPanel() {
-  const body  = document.getElementById('lbl-body');
-  const caret = document.getElementById('lbl-caret');
-  const open  = body.style.display !== 'none';
-  body.style.display  = open ? 'none' : 'flex';
-  caret.textContent   = open ? '▶' : '▼';
-  caret.style.transform = open ? '' : 'none';
-}
-
-function applyLabels() {
-  // Rebuild latest graph with merged labels
-  if (window._lastNodes && window._lastLinks) {
-    renderGraph(window._lastNodes, window._lastLinks);
-  } else {
-    alert('Run a trace first, then apply labels to refresh the graph.');
-  }
-}
-
-// Load on startup
-loadCustomLabels();
-// Start panel collapsed
-document.addEventListener('DOMContentLoaded', () => {
-  const b = document.getElementById('lbl-body');
-  if (b) b.style.display = 'none';
-  renderLabelList();
-});
 
 // ══════════════════════════════════════════════════════
 // CONFIG
@@ -508,33 +352,62 @@ const GENESIS  = '0x711b0ecb072c27de0e50c9944d7195a51b202522';
 const API_BASE = 'https://chainscan.0g.ai/v1/transaction';
 const sleep = ms => new Promise(r => setTimeout(r, ms));
 
+// ════════════════════════════════════════════════════════════════════════════
+//  WALLET LABELS — edit this file on GitHub to add or update labels.
+//
+//  HOW TO ADD A WALLET:
+//    '0xYOUR_ADDRESS_HERE': { label: 'Your Label', type: 'TYPE' },
+//
+//  TYPES & COLORS:
+//    'genesis'  → gold    ⬡  Genesis / minter wallet
+//    'whale'    → blue    🐋  Large holder (≥10M A0GI)
+//    'large'    → green   🟢  Large holder (1M–10M A0GI)
+//    'medium'   → cyan    🔵  Medium holder (500K–1M A0GI)
+//    'exchange' → orange  🏦  Centralised exchange hot/cold wallet
+//    'internal' → fuchsia 🏠  Internal / team / ops wallet
+//    'contract' → purple  🔷  Smart contract / protocol address
+//
+//  All addresses must be lowercase.
+// ════════════════════════════════════════════════════════════════════════════
 const KNOWN = {
-  [GENESIS]:                                         { label: '0G Genesis Treasury', type: 'genesis' },
-  '0xdd33275d285fd74a0f0af369d9ce335e3c5c5e1f':     { label: 'Allocation A (220M)', type: 'whale' },
-  '0x9181b0a31db3ce580a7cd5a91e115c7a484f2bc0':     { label: 'Allocation B (150M)', type: 'whale' },
-  '0x739d87653757e834c8cd86407c1bb2f86a787ecc':     { label: 'Allocation C (140M)', type: 'whale' },
-  '0xa50d10e7f898f01c3a3742cbf69cddcfacfd4438':     { label: 'Allocation D (128M)', type: 'whale' },
-  '0x098dbad8d4b8b7d8e665fb5f3433802693425419':     { label: 'Allocation E (125M)', type: 'whale' },
-  '0xef1605a64fdccc84b36fb1c092b698dcf38fd502':     { label: 'Allocation F (111M)', type: 'whale' },
-  '0xf5321c5b04f6b702ebd3b8e06beeda2655a5b8bf':     { label: 'Allocation G (80M)',  type: 'whale' },
-  '0xc16bc66b220ad6155e43b7f847f6f77d29334717':     { label: 'Allocation H (40M)',  type: 'whale' },
-  '0x7c46a60e7c98cd1e5cfd98600e867886b3a0226c':     { label: 'Allocation I (4.5M)', type: 'large' },
-  '0xb03e8e11730228c2d03270bcd1ab57818d7b6d8c':     { label: 'Wallet J (1.5M)',     type: 'large' },
-  // W0G ERC-20 wrapper
-  '0x1cd0690ff9a693f5ef2dd976660a8dafc81a109c':     { label: 'W0G Contract',        type: 'contract' },
+
+  // ── Genesis ───────────────────────────────────────────────────────────────
+  [GENESIS]:                                         { label: '0G Genesis Treasury',   type: 'genesis' },
+
+  // ── TGE Allocations (Tier 1) ─────────────────────────────────────────────
+  '0xdd33275d285fd74a0f0af369d9ce335e3c5c5e1f':     { label: 'Allocation A (220M)',    type: 'whale'   },
+  '0x9181b0a31db3ce580a7cd5a91e115c7a484f2bc0':     { label: 'Allocation B (150M)',    type: 'whale'   },
+  '0x739d87653757e834c8cd86407c1bb2f86a787ecc':     { label: 'Allocation C (140M)',    type: 'whale'   },
+  '0xa50d10e7f898f01c3a3742cbf69cddcfacfd4438':     { label: 'Allocation D (128M)',    type: 'whale'   },
+  '0x098dbad8d4b8b7d8e665fb5f3433802693425419':     { label: 'Allocation E (125M)',    type: 'whale'   },
+  '0xef1605a64fdccc84b36fb1c092b698dcf38fd502':     { label: 'Allocation F (111M)',    type: 'whale'   },
+  '0xf5321c5b04f6b702ebd3b8e06beeda2655a5b8bf':     { label: 'Allocation G (80M)',     type: 'whale'   },
+  '0xc16bc66b220ad6155e43b7f847f6f77d29334717':     { label: 'Allocation H (40M)',     type: 'whale'   },
+
+  // ── TGE Allocations (Tier 2) ─────────────────────────────────────────────
+  '0x7c46a60e7c98cd1e5cfd98600e867886b3a0226c':     { label: 'Allocation I (4.5M)',    type: 'large'   },
+  '0xb03e8e11730228c2d03270bcd1ab57818d7b6d8c':     { label: 'Allocation J (1.5M)',    type: 'large'   },
+
+  // ── Contracts ─────────────────────────────────────────────────────────────
+  '0x1cd0690ff9a693f5ef2dd976660a8dafc81a109c':     { label: 'W0G Wrapper Contract',   type: 'contract' },
+
+  // ── Exchanges ─────────────────────────────────────────────────────────────
+  // '0xYOUR_EXCHANGE_ADDRESS':                      { label: 'Binance Hot Wallet',     type: 'exchange' },
+
+  // ── Internal / Team Wallets ───────────────────────────────────────────────
+  // '0xYOUR_INTERNAL_ADDRESS':                      { label: 'OG Foundation Ops',      type: 'internal' },
+
+  // ── Add new wallets below this line ──────────────────────────────────────
+
 };
 
 function knownLabel(addr) {
-  const a = (addr||'').toLowerCase();
-  const c = CUSTOM_LABELS[a];
-  if (c) return c.label;
-  const k = KNOWN[a];
+  const k = KNOWN[(addr||'').toLowerCase()];
   return k ? k.label : (addr.slice(0,6)+'…'+addr.slice(-4));
 }
 
 function resolvedType(addr) {
-  const a = (addr||'').toLowerCase();
-  return (CUSTOM_LABELS[a]?.type) || (KNOWN[a]?.type) || null;
+  return KNOWN[(addr||'').toLowerCase()]?.type || null;
 }
 function fmt(n) {
   if (!n || isNaN(n)) return '—';
